@@ -12,6 +12,11 @@ services:
       HOLYPIPE_LOG_LEVEL: "INFO"
     volumes:
       - holypipe_data:/data
+    extra_hosts:
+      # host.docker.internal resolves automatically on Docker Desktop
+      # (Windows/Mac); native Linux Docker needs this explicit mapping to
+      # reach a database running on the host machine itself.
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres_demo:
         condition: service_healthy

@@ -2,8 +2,13 @@
 
 A small, purpose-built ELT / data-replication tool — the parts of Airbyte you
 actually need when you only care about **PostgreSQL, MySQL and SQLite** as
-sources and destinations. Runs entirely in Docker, syncs in real time via
-change-data-capture (CDC), and ships with a live web dashboard.
+sources and destinations. Runs entirely in Docker (Windows, macOS, and Linux
+alike), syncs in real time via change-data-capture (CDC), and ships with a
+live web dashboard.
+
+📖 **Guides:** [User Guide](docs/USER_GUIDE.md) ·
+[Administrator Guide](docs/ADMIN_GUIDE.md) ·
+[Developer Guide](docs/DEVELOPER_GUIDE.md)
 
 ## What it does
 
