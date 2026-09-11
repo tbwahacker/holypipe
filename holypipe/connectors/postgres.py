@@ -29,6 +29,7 @@ from .base import (
     Column,
     ConnectorError,
     StreamSchema,
+    bounded_name,
     normalize_record,
     normalize_value,
 )
@@ -591,4 +592,20 @@ class PostgresDestination(PostgresMixin, BaseDestination):
     def truncate(self, table: str, namespace: str | None) -> None:
         with self._get_conn() as conn, conn.cursor() as cur:
             cur.execute(sql.SQL("TRUNCATE TABLE {}").format(self._rel(table, namespace)))
+            conn.commit()
+
+    def swap_in(self, table: str, namespace: str | None, shadow_table: str) -> None:
+        schema = self._schema(namespace)
+        old = bounded_name(table, "__hpold")
+        with self._get_conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM information_schema.tables "
+                        "WHERE table_schema = %s AND table_name = %s", (schema, table))
+            exists = cur.fetchone() is not None
+            if exists:
+                cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(
+                    self._rel(table, schema), sql.Identifier(old)))
+            cur.execute(sql.SQL("ALTER TABLE {} RENAME TO {}").format(
+                self._rel(shadow_table, schema), sql.Identifier(table)))
+            if exists:
+                cur.execute(sql.SQL("DROP TABLE {}").format(self._rel(old, schema)))
             conn.commit()
