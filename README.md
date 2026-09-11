@@ -1,4 +1,6 @@
-# HolyPipe
+<p align="center">
+  <img src="assets/logo-wordmark.svg" alt="HolyPipe" width="360">
+</p>
 
 A small, purpose-built ELT / data-replication tool — the parts of Airbyte you
 actually need when you only care about **PostgreSQL, MySQL and SQLite** as
@@ -53,9 +55,39 @@ live web dashboard.
 - **Everything else Airbyte doesn't need to be**: no Java, no Temporal, no
   connector marketplace. One Python process, one container.
 
-## Quick start
+## Install
+
+No cloning required — pick whichever fits how you run things. Works
+identically on Windows, macOS, and Linux either way.
+
+**Docker (recommended)** — pulls a prebuilt image, nothing to build:
 
 ```bash
+docker run -d --name holypipe -p 8090:8000 -v holypipe_data:/data \
+  ghcr.io/tbwahacker/holypipe:latest
+```
+
+Open `http://localhost:8090` and add your own sources/destinations
+straight away (see the [User Guide](docs/USER_GUIDE.md)).
+
+**Python (no Docker)**:
+
+```bash
+pip install holypipe
+holypipe   # starts the dashboard on http://localhost:8000
+```
+
+Needs Python 3.11+. `psycopg2` requires `libpq` on the host (its wheel
+usually bundles this already); everything else is pure Python. Config is
+the same environment variables either way — see
+[Configuration](docs/ADMIN_GUIDE.md#configuration).
+
+**Try the full demo stack** (clone this repo) — spins up seeded Postgres
+and MySQL sources plus a warehouse destination alongside HolyPipe, so
+there's real data to sync immediately:
+
+```bash
+git clone https://github.com/tbwahacker/holypipe.git && cd holypipe
 docker compose up --build
 ```
 
@@ -149,7 +181,7 @@ Open http://localhost:8090, then:
 ## Architecture
 
 ```
-app/
+holypipe/
   connectors/        Source & destination drivers (postgres, mysql, sqlite)
                       behind a shared canonical-type interface.
   engine/
@@ -172,8 +204,8 @@ column and a MySQL `decimal` column land the same way in a SQLite `REAL`.
 
 ```bash
 python -m venv .venv && . .venv/Scripts/activate   # or source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install -e .
+uvicorn holypipe.main:app --reload
 ```
 
 You'll need your own Postgres/MySQL to point sources/destinations at, or use

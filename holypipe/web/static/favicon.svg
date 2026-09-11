@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="HolyPipe logo">
+  <defs>
+    <linearGradient id="hp-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0b2a3d"/>
+    </linearGradient>
+    <linearGradient id="hp-pipe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0fffb"/>
+      <stop offset="1" stop-color="#c9fff1"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#hp-bg)"/>
+
+  <!-- halo: a tilted, broken ring nodding to "Holy" -->
+  <ellipse cx="64" cy="34" rx="32" ry="9" fill="none" stroke="#9ff3e6"
+           stroke-width="4" stroke-linecap="round"
+           stroke-dasharray="118 60" transform="rotate(-9 64 34)" opacity="0.85"/>
+
+  <!-- pipe: many sources converging through one throat, fanning back out -->
+  <path d="M26,44 L102,44 L76,66 L102,88 L26,88 L52,66 Z"
+        fill="url(#hp-pipe)" stroke="#0c4a44" stroke-width="2" stroke-linejoin="round"/>
+
+  <!-- flowing data particles through the throat -->
+  <circle cx="64" cy="52" r="4.2" fill="#0c4a44"/>
+  <circle cx="64" cy="66" r="3.2" fill="#0c4a44"/>
+  <circle cx="64" cy="80" r="4.2" fill="#0c4a44"/>
+</svg>

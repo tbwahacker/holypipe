@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "holypipe"
+version = "1.0.0"
+description = "A scoped ELT / CDC data-replication tool for PostgreSQL, MySQL, and SQLite"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "tbwahacker" }]
+keywords = ["etl", "elt", "cdc", "replication", "postgresql", "mysql", "sqlite", "data-pipeline"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: System :: Distributed Computing",
+    "Framework :: FastAPI",
+]
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "SQLAlchemy==2.0.36",
+    "pydantic==2.10.4",
+    "psycopg2-binary==2.9.10",
+    "PyMySQL==1.1.1",
+    "cryptography==44.0.0",
+    "mysql-replication==1.0.9",
+    "python-dotenv==1.0.1",
+    "croniter==2.0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/tbwahacker/holypipe"
+Documentation = "https://github.com/tbwahacker/holypipe/blob/main/docs/USER_GUIDE.md"
+Repository = "https://github.com/tbwahacker/holypipe"
+Issues = "https://github.com/tbwahacker/holypipe/issues"
+
+[project.scripts]
+holypipe = "holypipe.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["holypipe*"]
+
+[tool.setuptools.package-data]
+holypipe = ["web/static/*"]

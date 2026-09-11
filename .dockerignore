@@ -5,5 +5,7 @@ __pycache__
 .venv
 data
 *.md
+!README.md
 demo
 docker-compose.yml
+docs

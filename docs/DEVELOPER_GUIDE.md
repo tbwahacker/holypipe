@@ -7,7 +7,7 @@ dashboard see the [User Guide](USER_GUIDE.md); for deploying it see the
 ## Layout
 
 ```
-app/
+holypipe/
   connectors/        Source & destination drivers (postgres, mysql, sqlite)
                       behind a shared canonical-type interface.
     base.py            The BaseSource/BaseDestination contracts, the
@@ -56,7 +56,7 @@ app/
 ## The canonical type system
 
 Every connector normalizes source column types into nine canonical types
-(`app/connectors/base.py`): `string`, `integer`, `number`, `boolean`,
+(`holypipe/connectors/base.py`): `string`, `integer`, `number`, `boolean`,
 `timestamp`, `date`, `time`, `json`, `binary`. This is what lets a
 Postgres `numeric` column, a MySQL `decimal` column, and whatever SQLite
 calls it all land in the same kind of destination column regardless of
@@ -148,7 +148,7 @@ replication connection).
 ## Adding a new connector
 
 Implement `BaseSource` and/or `BaseDestination` from
-`app/connectors/base.py`:
+`holypipe/connectors/base.py`:
 
 - `test()` — return a short string on success, raise `ConnectorError` on
   failure.
@@ -161,14 +161,14 @@ Implement `BaseSource` and/or `BaseDestination` from
   `teardown_cdc()`.
 - Destination: `prepare()`, `write()`, `delete()`, `truncate()`.
 
-Then register it in `app/connectors/registry.py` — add it to
+Then register it in `holypipe/connectors/registry.py` — add it to
 `SOURCE_TYPES`/`DESTINATION_TYPES` and give it a `CONFIG_SPEC` entry (the
 field list the dashboard's connector form renders; supports `text`,
 `password`, `number`, `checkbox`, and `select` field kinds).
 
 ## Frontend
 
-`app/web/static/app.js` is one file, no build step, no framework. The
+`holypipe/web/static/app.js` is one file, no build step, no framework. The
 `el(tag, attrs, children)` helper builds DOM nodes by hand (attributes,
 an `onX` key wires an event listener, `class`/`html` are special-cased).
 Modals are a single reused `#modal`/`#modalBackdrop` pair — `openModal()`/
@@ -190,13 +190,13 @@ refresh.
 
 ```bash
 python -m venv .venv && . .venv/Scripts/activate   # or source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pip install -e .
+uvicorn holypipe.main:app --reload
 ```
 
 You'll need your own Postgres/MySQL to point sources/destinations at, or
 use `sqlite` (just a file path) for a zero-setup source/destination.
-Static files are served straight from `app/web/static/` — edit and
+Static files are served straight from `holypipe/web/static/` — edit and
 refresh the browser, no build/watch step.
 
 There is currently no automated test suite. When adding one, the natural
@@ -213,7 +213,7 @@ and API tests against the FastAPI app directly (`TestClient`).
 - Every datetime stored in or compared against the metadata DB goes
   through `timeutil.utcnow()` (naive UTC) — never
   `datetime.now(timezone.utc)` directly in code that touches `Connection`/
-  `SyncRun` timestamps. See `app/timeutil.py` for why.
+  `SyncRun` timestamps. See `holypipe/timeutil.py` for why.
 - Prefer extending an existing connector's shape over adding
   connector-specific branches in `engine/`. The engine code should only
   ever call the `BaseSource`/`BaseDestination` interface.
