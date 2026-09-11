@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo-wordmark.svg" alt="HolyPipe" width="360">
+  <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/assets/logo-wordmark.svg" alt="HolyPipe" width="360">
 </p>
 
 <p align="center">
@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/holypipe/"><img src="https://img.shields.io/pypi/dm/holypipe?label=PyPI%20downloads" alt="PyPI downloads"></a>
   <a href="https://github.com/tbwahacker/holypipe/releases"><img src="https://img.shields.io/github/v/tag/tbwahacker/holypipe?label=version&sort=semver" alt="Latest version"></a>
   <a href="https://github.com/tbwahacker/holypipe/stargazers"><img src="https://img.shields.io/github/stars/tbwahacker/holypipe" alt="GitHub stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/tbwahacker/holypipe" alt="License"></a>
+  <a href="https://github.com/tbwahacker/holypipe/blob/main/LICENSE"><img src="https://img.shields.io/github/license/tbwahacker/holypipe" alt="License"></a>
 </p>
 
 A small, purpose-built ELT / data-replication tool — the parts of Airbyte you
@@ -17,9 +17,9 @@ sources and destinations. Runs entirely in Docker (Windows, macOS, and Linux
 alike), syncs in real time via change-data-capture (CDC), and ships with a
 live web dashboard.
 
-📖 **Guides:** [User Guide](docs/USER_GUIDE.md) ·
-[Administrator Guide](docs/ADMIN_GUIDE.md) ·
-[Developer Guide](docs/DEVELOPER_GUIDE.md)
+📖 **Guides:** [User Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/USER_GUIDE.md) ·
+[Administrator Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/ADMIN_GUIDE.md) ·
+[Developer Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/DEVELOPER_GUIDE.md)
 
 ## What it does
 
@@ -77,7 +77,7 @@ docker run -d --name holypipe -p 8090:8000 -v holypipe_data:/data \
 ```
 
 Open `http://localhost:8090` and add your own sources/destinations
-straight away (see the [User Guide](docs/USER_GUIDE.md)).
+straight away (see the [User Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/USER_GUIDE.md)).
 
 **Python (no Docker)**:
 
@@ -89,7 +89,7 @@ holypipe   # starts the dashboard on http://localhost:8000
 Needs Python 3.11+. `psycopg2` requires `libpq` on the host (its wheel
 usually bundles this already); everything else is pure Python. Config is
 the same environment variables either way — see
-[Configuration](docs/ADMIN_GUIDE.md#configuration).
+[Configuration](https://github.com/tbwahacker/holypipe/blob/main/docs/ADMIN_GUIDE.md#configuration).
 
 **Try the full demo stack** (clone this repo) — spins up seeded Postgres
 and MySQL sources plus a warehouse destination alongside HolyPipe, so
@@ -222,4 +222,4 @@ You'll need your own Postgres/MySQL to point sources/destinations at, or use
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/tbwahacker/holypipe/blob/main/LICENSE).

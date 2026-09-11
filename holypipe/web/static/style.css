@@ -30,7 +30,8 @@ body {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 10px 24px;
   padding: 12px 20px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
@@ -74,6 +75,22 @@ body {
 .login-card h1 { font-size: 20px; margin: 0 0 20px; }
 .login-card .field { text-align: left; }
 
+@media (max-width: 420px) {
+  .login-screen { padding: 12px; }
+  .login-card { padding: 24px 18px; }
+  .login-card h1 { font-size: 18px; margin-bottom: 14px; }
+}
+
+/* iOS Safari zooms the whole page in on focus when an input's font-size is
+   under 16px — the classic "form feels broken on mobile" bug. Only need to
+   override it below desktop widths; the compact 13.5px stays for mouse use. */
+@media (max-width: 480px) {
+  .field input[type=text], .field input[type=password], .field input[type=number],
+  .field select, .field textarea {
+    font-size: 16px;
+  }
+}
+
 .brand {
   font-weight: 700;
   font-size: 17px;
@@ -97,7 +114,7 @@ body {
   box-shadow: 0 0 10px var(--accent);
 }
 
-.tabs { display: flex; gap: 4px; flex: 1; }
+.tabs { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
 
 .tab {
   background: transparent;
@@ -132,6 +149,8 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 16px;
 }
 
