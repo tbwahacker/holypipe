@@ -1,0 +1,4 @@
+# Every file in the repo requires a review from the repo owner before a
+# pull request can merge into a protected branch (see branch protection
+# settings: "Require review from Code Owners").
+* @tbwahacker

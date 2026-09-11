@@ -58,5 +58,9 @@ def health():
 def index():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        # Never cache the HTML shell itself — it references versioned
+        # (?v=...) static assets, so revalidating it on every load is what
+        # lets a new release's JS/CSS actually take effect in the browser
+        # instead of silently running a stale cached copy.
+        return FileResponse(index_path, headers={"Cache-Control": "no-cache, must-revalidate"})
     return {"status": "ok", "ui": "not built"}
