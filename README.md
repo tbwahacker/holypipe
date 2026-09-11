@@ -173,3 +173,7 @@ uvicorn app.main:app --reload
 
 You'll need your own Postgres/MySQL to point sources/destinations at, or use
 `sqlite` (just a file path) to try it with zero extra setup.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
