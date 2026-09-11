@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
         pump_task.cancel()
 
 
-app = FastAPI(title="HolyPipe", version="1.0.1", lifespan=lifespan)
+app = FastAPI(title="HolyPipe", version="1.0.2", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(api_router)
 
