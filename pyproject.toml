@@ -35,6 +35,7 @@ dependencies = [
     "mysql-replication==1.0.9",
     "python-dotenv==1.0.1",
     "croniter==2.0.5",
+    "bcrypt==4.2.1",
 ]
 
 [project.urls]

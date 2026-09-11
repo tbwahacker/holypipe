@@ -9,7 +9,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .api.auth_routes import router as auth_router
 from .api.routes import router as api_router
+from .auth import seed_default_admin
 from .bus import pump
 from .config import settings
 from .db import init_db
@@ -23,6 +25,7 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "web", "static")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    seed_default_admin()
     recover_orphaned_state()
     pump_task = asyncio.create_task(pump())
     if settings.scheduler_enabled:
@@ -39,6 +42,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="HolyPipe", version="1.0.0", lifespan=lifespan)
+app.include_router(auth_router)
 app.include_router(api_router)
 
 if os.path.isdir(STATIC_DIR):

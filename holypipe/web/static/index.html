@@ -8,15 +8,54 @@
 <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+<div class="login-screen" id="loginScreen">
+  <form class="login-card" id="loginForm">
+    <img src="/static/favicon.svg" alt="" class="login-logo" width="56" height="56">
+    <h1>HolyPipe</h1>
+    <div class="field">
+      <label for="loginUsername">Username</label>
+      <input type="text" id="loginUsername" name="username" autocomplete="username" required autofocus>
+    </div>
+    <div class="field">
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" name="password" autocomplete="current-password" required>
+    </div>
+    <div class="field hint" id="loginError" style="color:var(--err)"></div>
+    <button type="submit" class="btn primary" id="loginSubmitBtn" style="width:100%">Sign in</button>
+  </form>
+</div>
+
+<div class="login-screen" id="changePasswordScreen" hidden>
+  <form class="login-card" id="changePasswordForm">
+    <img src="/static/favicon.svg" alt="" class="login-logo" width="56" height="56">
+    <h1>Set a new password</h1>
+    <div class="field hint">You're signed in with a default or reset password — set a new one to continue.</div>
+    <div class="field">
+      <label for="cpOld">Current password</label>
+      <input type="password" id="cpOld" name="old_password" autocomplete="current-password" required>
+    </div>
+    <div class="field">
+      <label for="cpNew">New password (min 8 characters)</label>
+      <input type="password" id="cpNew" name="new_password" autocomplete="new-password" minlength="8" required>
+    </div>
+    <div class="field hint" id="changePasswordError" style="color:var(--err)"></div>
+    <button type="submit" class="btn primary" id="changePasswordBtn" style="width:100%">Set password &amp; continue</button>
+  </form>
+</div>
+
+<div id="appRoot" hidden>
 <header class="topbar">
-  <div class="brand"><span class="dot"></span> HolyPipe</div>
+  <button type="button" class="brand" id="brandHome" title="Back to Connections"><span class="dot"></span> HolyPipe</button>
   <nav class="tabs">
     <button class="tab active" data-tab="connections">Connections</button>
     <button class="tab" data-tab="sources">Sources</button>
     <button class="tab" data-tab="destinations">Destinations</button>
     <button class="tab" data-tab="logs">Live Logs</button>
+    <button class="tab" data-tab="users" id="usersTabBtn" hidden>Users &amp; Roles</button>
   </nav>
   <div class="ws-status" id="wsStatus">connecting…</div>
+  <div class="current-user" id="currentUserBadge"></div>
+  <button type="button" class="btn small" id="logoutBtn">Log out</button>
 </header>
 
 <main>
@@ -51,7 +90,22 @@
     </div>
     <div id="logConsole" class="console"></div>
   </section>
+
+  <section id="panel-users" class="panel">
+    <div class="panel-head">
+      <h2>Users &amp; Roles</h2>
+      <div style="display:flex; gap:8px">
+        <button class="btn" id="newRoleBtn">+ New Role</button>
+        <button class="btn primary" id="newUserBtn">+ New User</button>
+      </div>
+    </div>
+    <h3 class="section-subhead">Users</h3>
+    <div id="usersList" class="cards"></div>
+    <h3 class="section-subhead">Roles</h3>
+    <div id="rolesList" class="cards"></div>
+  </section>
 </main>
+</div>
 
 <div class="modal-backdrop" id="modalBackdrop">
   <div class="modal" id="modal"></div>

@@ -35,6 +35,10 @@ async function api(path, opts = {}) {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
+  if (res.status === 401) {
+    showLoginScreen();
+    throw new Error("Your session expired — please sign in again");
+  }
   let body = null;
   try { body = await res.json(); } catch { /* no body */ }
   if (!res.ok) {
@@ -79,13 +83,128 @@ document.getElementById("modalBackdrop").addEventListener("click", (e) => {
 // ---------------------------------------------------------------------------
 // tabs
 // ---------------------------------------------------------------------------
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + name));
+}
 document.querySelectorAll(".tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
-  });
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
+document.getElementById("brandHome").addEventListener("click", () => switchTab("connections"));
+
+// ---------------------------------------------------------------------------
+// auth
+// ---------------------------------------------------------------------------
+state.currentUser = null;
+state.permissions = new Set();
+
+function hasPermission(code) {
+  return state.permissions.has("*") || state.permissions.has(code);
+}
+
+function showLoginScreen() {
+  document.getElementById("appRoot").hidden = true;
+  document.getElementById("changePasswordScreen").hidden = true;
+  document.getElementById("loginScreen").hidden = false;
+}
+
+function showChangePasswordScreen() {
+  document.getElementById("appRoot").hidden = true;
+  document.getElementById("loginScreen").hidden = true;
+  document.getElementById("changePasswordScreen").hidden = false;
+}
+
+function applyCurrentUser(me) {
+  state.currentUser = me;
+  state.permissions = new Set(me.permissions);
+  document.getElementById("currentUserBadge").textContent = `${me.username}`;
+  document.getElementById("usersTabBtn").hidden = !(hasPermission("users.manage") || hasPermission("roles.manage"));
+  document.getElementById("newSourceBtn").hidden = !hasPermission("sources.manage");
+  document.getElementById("newDestinationBtn").hidden = !hasPermission("destinations.manage");
+  document.getElementById("newConnectionBtn").hidden = !hasPermission("connections.manage");
+}
+
+function enterDashboard(me) {
+  applyCurrentUser(me);
+  document.getElementById("loginScreen").hidden = true;
+  document.getElementById("changePasswordScreen").hidden = true;
+  document.getElementById("appRoot").hidden = false;
+  refreshAll().catch((e) => toast(e.message, "err"));
+  connectWebSocket();
+  setInterval(() => { refreshConnections().catch(() => {}); }, 15000);
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch(API + "/auth/me");
+    if (!res.ok) { showLoginScreen(); return; }
+    const me = await res.json();
+    if (me.must_change_password) {
+      state.currentUser = me;
+      showChangePasswordScreen();
+    } else {
+      enterDashboard(me);
+    }
+  } catch {
+    showLoginScreen();
+  }
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const username = document.getElementById("loginUsername").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errEl = document.getElementById("loginError");
+  const btn = document.getElementById("loginSubmitBtn");
+  errEl.textContent = "";
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((body && body.detail) || "Login failed");
+    document.getElementById("loginPassword").value = "";
+    if (body.must_change_password) {
+      state.currentUser = body;
+      showChangePasswordScreen();
+    } else {
+      enterDashboard(body);
+    }
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("changePasswordForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const old_password = document.getElementById("cpOld").value;
+  const new_password = document.getElementById("cpNew").value;
+  const errEl = document.getElementById("changePasswordError");
+  const btn = document.getElementById("changePasswordBtn");
+  errEl.textContent = "";
+  btn.disabled = true;
+  try {
+    await api("/auth/change-password", { method: "POST", body: JSON.stringify({ old_password, new_password }) });
+    document.getElementById("cpOld").value = "";
+    document.getElementById("cpNew").value = "";
+    const me = await api("/auth/me");
+    enterDashboard(me);
+    toast("Password updated", "ok");
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  try { await api("/auth/logout", { method: "POST" }); } catch { /* logging out anyway */ }
+  location.reload();
 });
 
 // ---------------------------------------------------------------------------
@@ -136,6 +255,16 @@ function readConfigForm(form, fields) {
 function connectorCard(item, kind) {
   const usedBy = state.connections.filter((c) =>
     kind === "source" ? c.source_id === item.id : c.destination_id === item.id);
+  const canManage = hasPermission(`${kind}s.manage`);
+  const actions = [
+    el("button", { class: "btn small", onclick: () => testConnector(item, kind) }, "Test"),
+  ];
+  if (canManage) {
+    actions.push(
+      el("button", { class: "btn small", onclick: () => openConnectorModal(kind, item) }, "Edit"),
+      el("button", { class: "btn small danger", onclick: () => deleteConnector(item, kind) }, "Delete"),
+    );
+  }
   const card = el("div", { class: "card" });
   card.append(
     el("div", { class: "card-top" }, [
@@ -147,11 +276,7 @@ function connectorCard(item, kind) {
         ]),
         el("div", { class: "card-sub" }, `${usedBy.length} connection(s) using this`),
       ]),
-      el("div", { class: "card-actions" }, [
-        el("button", { class: "btn small", onclick: () => testConnector(item, kind) }, "Test"),
-        el("button", { class: "btn small", onclick: () => openConnectorModal(kind, item) }, "Edit"),
-        el("button", { class: "btn small danger", onclick: () => deleteConnector(item, kind) }, "Delete"),
-      ]),
+      el("div", { class: "card-actions" }, actions),
     ])
   );
   return card;
@@ -305,25 +430,34 @@ function connectionCard(conn) {
     openConnectionDetail(conn);
   });
 
+  const canOperate = hasPermission("connections.operate");
+  const canManage = hasPermission("connections.manage");
   const actions = [];
   if (conn.mode === "batch") {
     actions.push(el("button", {
       class: "btn small primary",
-      disabled: (conn.status === "running" || !conn.enabled) ? "true" : null,
+      disabled: (conn.status === "running" || !conn.enabled || !canOperate) ? "true" : null,
       onclick: () => runConnection(conn),
     }, conn.status === "running" ? "Running…" : "Run now"));
   } else {
     const isStreaming = conn.status === "streaming";
     actions.push(el("button", {
-      class: "btn small primary", onclick: () => toggleCdc(conn, !isStreaming),
+      class: "btn small primary", disabled: canOperate ? null : "true",
+      onclick: () => toggleCdc(conn, !isStreaming),
     }, isStreaming ? "Stop" : "Start"));
   }
-  actions.push(el("button", {
-    class: "btn small", onclick: () => toggleActive(conn),
-  }, conn.enabled ? "Deactivate" : "Activate"));
-  actions.push(el("button", { class: "btn small", onclick: () => openConnectionEditModal(conn) }, "Edit"));
+  if (canOperate) {
+    actions.push(el("button", {
+      class: "btn small", onclick: () => toggleActive(conn),
+    }, conn.enabled ? "Deactivate" : "Activate"));
+  }
+  if (canManage) {
+    actions.push(el("button", { class: "btn small", onclick: () => openConnectionEditModal(conn) }, "Edit"));
+  }
   actions.push(el("button", { class: "btn small", onclick: () => viewRuns(conn) }, "Runs"));
-  actions.push(el("button", { class: "btn small danger", onclick: () => deleteConnection(conn) }, "Delete"));
+  if (canManage) {
+    actions.push(el("button", { class: "btn small danger", onclick: () => deleteConnection(conn) }, "Delete"));
+  }
 
   let frequencyLabel;
   if (conn.mode === "cdc") {
@@ -472,37 +606,46 @@ function openConnectionDetail(conn) {
     frequencyLabel = `every ${conn.interval_seconds}s`;
   }
 
+  const canOperate = hasPermission("connections.operate");
+  const canManage = hasPermission("connections.manage");
   const actionsRow = el("div", { class: "card-actions" }, []);
   if (conn.mode === "batch") {
     actionsRow.append(el("button", {
       class: "btn small primary",
-      disabled: (conn.status === "running" || !conn.enabled) ? "true" : null,
+      disabled: (conn.status === "running" || !conn.enabled || !canOperate) ? "true" : null,
       onclick: async () => { await runConnection(conn); closeModal(); },
     }, conn.status === "running" ? "Running…" : "Run now"));
   } else {
     const isStreaming = conn.status === "streaming";
     actionsRow.append(el("button", {
-      class: "btn small primary", onclick: async () => { await toggleCdc(conn, !isStreaming); closeModal(); },
+      class: "btn small primary", disabled: canOperate ? null : "true",
+      onclick: async () => { await toggleCdc(conn, !isStreaming); closeModal(); },
     }, isStreaming ? "Stop" : "Start"));
   }
-  actionsRow.append(el("button", {
-    class: "btn small", onclick: async () => { await toggleActive(conn); closeModal(); },
-  }, conn.enabled ? "Deactivate" : "Activate"));
-  actionsRow.append(el("button", {
-    class: "btn small", title: "Reload every table from scratch, ignoring any incremental/xmin cursor",
-    onclick: async () => {
-      if (!confirm(`Resync all tables for "${conn.name}"? This reloads everything from scratch.`)) return;
-      await resyncConnection(conn);
-      closeModal();
-    },
-  }, "↻ Resync all"));
-  actionsRow.append(el("button", {
-    class: "btn small", onclick: () => openConnectionEditModal(conn),
-  }, "Edit"));
+  if (canOperate) {
+    actionsRow.append(el("button", {
+      class: "btn small", onclick: async () => { await toggleActive(conn); closeModal(); },
+    }, conn.enabled ? "Deactivate" : "Activate"));
+    actionsRow.append(el("button", {
+      class: "btn small", title: "Reload every table from scratch, ignoring any incremental/xmin cursor",
+      onclick: async () => {
+        if (!confirm(`Resync all tables for "${conn.name}"? This reloads everything from scratch.`)) return;
+        await resyncConnection(conn);
+        closeModal();
+      },
+    }, "↻ Resync all"));
+  }
+  if (canManage) {
+    actionsRow.append(el("button", {
+      class: "btn small", onclick: () => openConnectionEditModal(conn),
+    }, "Edit"));
+  }
   actionsRow.append(el("button", { class: "btn small", onclick: () => viewRuns(conn) }, "Runs"));
-  actionsRow.append(el("button", {
-    class: "btn small danger", onclick: async () => { await deleteConnection(conn); closeModal(); },
-  }, "Delete"));
+  if (canManage) {
+    actionsRow.append(el("button", {
+      class: "btn small danger", onclick: async () => { await deleteConnection(conn); closeModal(); },
+    }, "Delete"));
+  }
 
   const selectedStreams = conn.streams.filter((s) => s.selected !== false);
   const streamRows = conn.streams.length
@@ -511,7 +654,7 @@ function openConnectionDetail(conn) {
         s.selected === false ? el("span", { class: "badge" }, "off") : null,
         s.columns ? el("span", { class: "badge" }, `${s.columns.length}/${s.schema.columns.length} cols`) : null,
         el("span", { class: "badge" }, s.sync_mode),
-        el("button", {
+        canOperate ? el("button", {
           type: "button", class: "btn small",
           disabled: conn.mode === "cdc" ? "true" : null,
           title: conn.mode === "cdc"
@@ -522,7 +665,7 @@ function openConnectionDetail(conn) {
             await resyncConnection(conn, [s.schema.name]);
             closeModal();
           },
-        }, "↻"),
+        }, "↻") : null,
       ]))
     : [el("div", { class: "hint" }, "No tables configured.")];
 
@@ -554,10 +697,10 @@ function openConnectionDetail(conn) {
     el("hr", { class: "detail-divider" }),
     el("div", { class: "detail-section-title" }, [
       `Tables (${conn.streams.length})`,
-      el("button", {
+      canManage ? el("button", {
         type: "button", class: "btn small",
         onclick: () => { closeModal(); openAddSourceModal(conn); },
-      }, "+ Add source"),
+      }, "+ Add source") : null,
     ]),
     el("div", { class: "stream-list", style: "max-height:280px" }, streamRows),
     el("div", { class: "modal-actions" }, [
@@ -1190,13 +1333,16 @@ async function refreshConnections() {
 }
 
 async function refreshAll() {
-  const [sources, destinations, connections, types] = await Promise.all([
+  // A role might not hold every *.view permission (e.g. connections.view
+  // without sources.view) — fetch independently so one 403 doesn't blank
+  // out everything else the user *can* see.
+  const [sources, destinations, connections, types] = await Promise.allSettled([
     api("/sources"), api("/destinations"), api("/connections"), api("/connector-types"),
   ]);
-  state.sources = sources;
-  state.destinations = destinations;
-  state.connections = connections;
-  state.connectorTypes = types;
+  if (sources.status === "fulfilled") state.sources = sources.value;
+  if (destinations.status === "fulfilled") state.destinations = destinations.value;
+  if (connections.status === "fulfilled") state.connections = connections.value;
+  if (types.status === "fulfilled") state.connectorTypes = types.value;
   renderAll();
 }
 
@@ -1251,8 +1397,225 @@ function connectWebSocket() {
 }
 
 // ---------------------------------------------------------------------------
+// users & roles
+// ---------------------------------------------------------------------------
+let permissionCatalog = [];
+
+async function refreshUsersAndRoles() {
+  const [users, roles, perms] = await Promise.all([
+    api("/users"), api("/roles"), api("/auth/permissions"),
+  ]);
+  state.users = users;
+  state.roles = roles;
+  permissionCatalog = perms;
+  renderList("usersList", users, userCard, "No users yet.");
+  renderList("rolesList", roles, roleCard, "No roles yet.");
+}
+
+document.getElementById("usersTabBtn").addEventListener("click", () => {
+  refreshUsersAndRoles().catch((e) => toast(e.message, "err"));
+});
+
+function roleSummary(role) {
+  if (role.permissions.includes("*")) return "All permissions";
+  return role.permissions.length ? role.permissions.join(", ") : "No permissions";
+}
+
+function roleCard(role) {
+  const actions = [];
+  if (!role.is_builtin) {
+    actions.push(el("button", { class: "btn small", onclick: () => openRoleModal(role) }, "Edit"));
+    actions.push(el("button", { class: "btn small danger", onclick: () => deleteRole(role) }, "Delete"));
+  }
+  const card = el("div", { class: "card" });
+  card.append(
+    el("div", { class: "card-top" }, [
+      el("div", {}, [
+        el("div", { class: "card-title" }, [
+          role.name,
+          role.is_builtin ? el("span", { class: "badge" }, "built-in") : null,
+        ]),
+        role.description ? el("div", { class: "card-sub" }, role.description) : null,
+        el("div", { class: "card-sub" }, roleSummary(role)),
+      ]),
+      el("div", { class: "card-actions" }, actions),
+    ])
+  );
+  return card;
+}
+
+async function deleteRole(role) {
+  if (!confirm(`Delete role "${role.name}"?`)) return;
+  try {
+    await api(`/roles/${role.id}`, { method: "DELETE" });
+    toast("Deleted", "ok");
+    await refreshUsersAndRoles();
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+
+function userCard(user) {
+  const isSelf = state.currentUser && state.currentUser.id === user.id;
+  const actions = [el("button", { class: "btn small", onclick: () => openUserModal(user) }, "Edit")];
+  if (!isSelf) {
+    actions.push(el("button", {
+      class: "btn small", onclick: () => toggleUserActive(user),
+    }, user.is_active ? "Deactivate" : "Activate"));
+    actions.push(el("button", { class: "btn small danger", onclick: () => deleteUser(user) }, "Delete"));
+  }
+  const card = el("div", { class: "card" });
+  card.append(
+    el("div", { class: "card-top" }, [
+      el("div", {}, [
+        el("div", { class: "card-title" }, [
+          user.username,
+          isSelf ? el("span", { class: "badge" }, "you") : null,
+          el("span", { class: `badge ${user.is_active ? "" : "paused"}` }, user.is_active ? "active" : "deactivated"),
+          user.must_change_password ? el("span", { class: "badge" }, "must change password") : null,
+        ]),
+        el("div", { class: "card-sub" }, user.role_names.length ? user.role_names.join(", ") : "No roles assigned"),
+        el("div", { class: "card-sub" }, `Created ${fmtTime(user.created_at)}`),
+      ]),
+      el("div", { class: "card-actions" }, actions),
+    ])
+  );
+  return card;
+}
+
+async function toggleUserActive(user) {
+  try {
+    await api(`/users/${user.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !user.is_active }) });
+    toast(user.is_active ? "Deactivated" : "Activated", "ok");
+    await refreshUsersAndRoles();
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+
+async function deleteUser(user) {
+  if (!confirm(`Delete user "${user.username}"? This cannot be undone.`)) return;
+  try {
+    await api(`/users/${user.id}`, { method: "DELETE" });
+    toast("Deleted", "ok");
+    await refreshUsersAndRoles();
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+
+function openRoleModal(existing) {
+  if (existing && existing.is_builtin) return toast("The built-in Administrator role can't be edited", "err");
+  const isEdit = !!existing;
+  const wrap = el("div", {});
+  const nameInput = el("input", { type: "text", value: existing ? existing.name : "" });
+  const descInput = el("input", { type: "text", value: existing ? (existing.description || "") : "" });
+  const checks = permissionCatalog.map((p) => {
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = existing ? (existing.permissions.includes("*") || existing.permissions.includes(p.code)) : false;
+    const label = el("label", { class: "column-chip", title: p.description }, [cb, p.code]);
+    return { code: p.code, cb, label };
+  });
+  const permsWrap = el("div", { class: "stream-list" }, checks.map((c) => c.label));
+
+  const actions = el("div", { class: "modal-actions" }, [
+    el("button", { type: "button", class: "btn", onclick: closeModal }, "Cancel"),
+    el("button", { type: "button", class: "btn primary" }, isEdit ? "Save changes" : "Create role"),
+  ]);
+  actions.lastChild.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (!name) return toast("Name is required", "err");
+    const permissions = checks.filter((c) => c.cb.checked).map((c) => c.code);
+    try {
+      const body = JSON.stringify({ name, description: descInput.value.trim() || null, permissions });
+      if (isEdit) {
+        await api(`/roles/${existing.id}`, { method: "PATCH", body });
+        toast("Role updated", "ok");
+      } else {
+        await api("/roles", { method: "POST", body });
+        toast("Role created", "ok");
+      }
+      closeModal();
+      await refreshUsersAndRoles();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  });
+
+  wrap.append(
+    el("h3", {}, isEdit ? `Edit role — ${existing.name}` : "New role"),
+    el("div", { class: "form-grid" }, [
+      el("div", { class: "field span2" }, [el("label", {}, "Name *"), nameInput]),
+      el("div", { class: "field span2" }, [el("label", {}, "Description"), descInput]),
+    ]),
+    el("div", { class: "field" }, [el("label", {}, "Permissions")]),
+    permsWrap,
+    actions
+  );
+  openModal(wrap);
+}
+
+function openUserModal(existing) {
+  const isEdit = !!existing;
+  const wrap = el("div", {});
+  const usernameInput = el("input", { type: "text", value: existing ? existing.username : "" });
+  if (isEdit) usernameInput.disabled = true;
+  const passwordInput = el("input", { type: "password",
+    placeholder: isEdit ? "Leave blank to keep current password" : "" });
+  const roleChecks = (state.roles || []).map((r) => {
+    const cb = el("input", { type: "checkbox" });
+    cb.checked = existing ? existing.role_ids.includes(r.id) : false;
+    const label = el("label", { class: "column-chip" }, [cb, r.name]);
+    return { id: r.id, cb, label };
+  });
+  const rolesWrap = el("div", { class: "stream-list" }, roleChecks.map((c) => c.label));
+
+  const actions = el("div", { class: "modal-actions" }, [
+    el("button", { type: "button", class: "btn", onclick: closeModal }, "Cancel"),
+    el("button", { type: "button", class: "btn primary" }, isEdit ? "Save changes" : "Create user"),
+  ]);
+  actions.lastChild.addEventListener("click", async () => {
+    const username = usernameInput.value.trim();
+    if (!isEdit && !username) return toast("Username is required", "err");
+    const password = passwordInput.value;
+    if (password && password.length < 8) return toast("Password must be at least 8 characters", "err");
+    if (!isEdit && !password) return toast("Password is required", "err");
+    const role_ids = roleChecks.filter((c) => c.cb.checked).map((c) => c.id);
+    try {
+      if (isEdit) {
+        const body = { role_ids };
+        if (password) body.password = password;
+        await api(`/users/${existing.id}`, { method: "PATCH", body: JSON.stringify(body) });
+        toast("User updated", "ok");
+      } else {
+        await api("/users", { method: "POST", body: JSON.stringify({ username, password, role_ids }) });
+        toast("User created", "ok");
+      }
+      closeModal();
+      await refreshUsersAndRoles();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  });
+
+  wrap.append(
+    el("h3", {}, isEdit ? `Edit user — ${existing.username}` : "New user"),
+    el("div", { class: "form-grid" }, [
+      el("div", { class: "field span2" }, [el("label", {}, "Username *"), usernameInput]),
+      el("div", { class: "field span2" },
+        [el("label", {}, isEdit ? "New password" : "Password * (min 8 characters)"), passwordInput]),
+    ]),
+    el("div", { class: "field" }, [el("label", {}, "Roles")]),
+    rolesWrap,
+    actions
+  );
+  openModal(wrap);
+}
+
+document.getElementById("newRoleBtn").addEventListener("click", () => openRoleModal(null));
+document.getElementById("newUserBtn").addEventListener("click", () => openUserModal(null));
+
+// ---------------------------------------------------------------------------
 // boot
 // ---------------------------------------------------------------------------
-refreshAll().catch((e) => toast(e.message, "err"));
-connectWebSocket();
-setInterval(() => { refreshConnections().catch(() => {}); }, 15000);
+checkAuth();

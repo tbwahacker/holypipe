@@ -11,6 +11,64 @@ class ResyncRequest(BaseModel):
     stream_names: list[str] | None = None  # None = every selected stream
 
 
+# --- auth --------------------------------------------------------------------
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8)
+
+
+class MeOut(BaseModel):
+    id: str
+    username: str
+    must_change_password: bool
+    permissions: list[str]
+
+
+class RoleIn(BaseModel):
+    name: str
+    description: str | None = None
+    permissions: list[str] = Field(default_factory=list)
+
+
+class RoleOut(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    permissions: list[str]
+    is_builtin: bool
+    created_at: dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str = Field(min_length=8)
+    role_ids: list[str] = Field(default_factory=list)
+    is_active: bool = True
+
+
+class UserPatch(BaseModel):
+    role_ids: list[str] | None = None
+    is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=8)
+
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+    is_active: bool
+    must_change_password: bool
+    created_at: dt.datetime
+    role_ids: list[str]
+    role_names: list[str]
+
+
 class ConnectorIn(BaseModel):
     name: str
     type: str

@@ -39,13 +39,55 @@ body {
   z-index: 10;
 }
 
+.current-user { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+.section-subhead {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin: 22px 0 10px;
+}
+.section-subhead:first-of-type { margin-top: 0; }
+
+.login-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 16px;
+}
+.login-card {
+  width: 340px;
+  max-width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  text-align: center;
+  animation: modalIn .16s ease-out;
+}
+.login-logo { margin-bottom: 10px; border-radius: 14px; }
+.login-card h1 { font-size: 20px; margin: 0 0 20px; }
+.login-card .field { text-align: left; }
+
 .brand {
   font-weight: 700;
   font-size: 17px;
   display: flex;
   align-items: center;
   gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
+.brand:hover { color: var(--accent); }
 
 .brand .dot {
   width: 10px;

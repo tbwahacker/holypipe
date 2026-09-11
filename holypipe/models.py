@@ -112,3 +112,64 @@ class LogEntry(Base):
     ts: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow, index=True)
     level: Mapped[str] = mapped_column(String(10), default="INFO")
     message: Mapped[str] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Auth: users, dynamic roles, sessions
+# ---------------------------------------------------------------------------
+class UserRole(Base):
+    """User <-> Role membership. A user can hold several roles; its
+    effective permissions are the union of every held role's permissions."""
+
+    __tablename__ = "user_roles"
+
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    role_id: Mapped[str] = mapped_column(ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+
+
+class Role(Base):
+    """A named, admin-creatable bundle of permissions — this is the "dynamic"
+    part: the set of possible permission codes is fixed (see auth.PERMISSIONS,
+    what the code actually knows how to check), but which codes make up a
+    given role, and which roles exist at all, is entirely user-defined
+    through the API/UI. `["*"]` means every permission, including ones added
+    in the future — used by the built-in Administrator role."""
+
+    __tablename__ = "roles"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(100), unique=True)
+    description: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    permissions: Mapped[list] = mapped_column(JSON, default=list)  # list[str] of permission codes
+    is_builtin: Mapped[bool] = mapped_column(Boolean, default=False)  # protects Administrator from edit/delete
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+
+    users: Mapped[list["User"]] = relationship(secondary="user_roles", back_populates="roles")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    username: Mapped[str] = mapped_column(String(100), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Forced on the seeded admin/admin account; cleared on the next successful
+    # password change. Checked by the frontend to block dashboard use until done.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+
+    roles: Mapped[list[Role]] = relationship(secondary="user_roles", back_populates="users")
+
+
+class UserSession(Base):
+    """An opaque bearer token handed out on login, stored server-side so it
+    can be revoked (logout, deactivating a user) — deliberately not a
+    self-contained JWT, which can't be revoked before it expires on its own."""
+
+    __tablename__ = "user_sessions"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    expires_at: Mapped[dt.datetime] = mapped_column(DateTime, index=True)

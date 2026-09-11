@@ -2,6 +2,15 @@
   <img src="assets/logo-wordmark.svg" alt="HolyPipe" width="360">
 </p>
 
+<p align="center">
+  <a href="https://github.com/tbwahacker/holypipe/actions/workflows/publish.yml"><img src="https://github.com/tbwahacker/holypipe/actions/workflows/publish.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/tbwahacker/holypipe/pkgs/container/holypipe"><img src="https://img.shields.io/badge/ghcr.io-tbwahacker%2Fholypipe-2496ED?logo=docker&logoColor=white" alt="GHCR image"></a>
+  <a href="https://pypi.org/project/holypipe/"><img src="https://img.shields.io/pypi/dm/holypipe?label=PyPI%20downloads" alt="PyPI downloads"></a>
+  <a href="https://github.com/tbwahacker/holypipe/releases"><img src="https://img.shields.io/github/v/tag/tbwahacker/holypipe?label=version&sort=semver" alt="Latest version"></a>
+  <a href="https://github.com/tbwahacker/holypipe/stargazers"><img src="https://img.shields.io/github/stars/tbwahacker/holypipe" alt="GitHub stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/tbwahacker/holypipe" alt="License"></a>
+</p>
+
 A small, purpose-built ELT / data-replication tool — the parts of Airbyte you
 actually need when you only care about **PostgreSQL, MySQL and SQLite** as
 sources and destinations. Runs entirely in Docker (Windows, macOS, and Linux

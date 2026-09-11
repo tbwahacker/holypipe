@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, WebSocke
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..auth import SESSION_COOKIE, get_current_user, get_ws_user, require_permission
 from ..bus import encode, subscribe, unsubscribe
 from ..cache import discovery_cache
 from ..connectors import DESTINATION_TYPES, SOURCE_TYPES, build_destination, build_source, config_spec
@@ -44,7 +45,7 @@ def _next_cron_fire(expression: str, base: dt.datetime | None = None) -> dt.date
 # ---------------------------------------------------------------------------
 # Connector metadata
 # ---------------------------------------------------------------------------
-@router.get("/connector-types")
+@router.get("/connector-types", dependencies=[Depends(get_current_user)])
 def connector_types():
     def describe(types: dict, kind: str) -> list[dict]:
         return [{"type": t, "fields": config_spec(kind, t)} for t in types]
@@ -58,12 +59,12 @@ def connector_types():
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
-@router.get("/sources", response_model=list[sch.ConnectorOut])
+@router.get("/sources", response_model=list[sch.ConnectorOut], dependencies=[Depends(require_permission("sources.view"))])
 def list_sources(db: Session = Depends(get_session)):
     return db.execute(select(Source).order_by(Source.created_at.desc())).scalars().all()
 
 
-@router.post("/sources", response_model=sch.ConnectorOut)
+@router.post("/sources", response_model=sch.ConnectorOut, dependencies=[Depends(require_permission("sources.manage"))])
 def create_source(body: sch.ConnectorIn, db: Session = Depends(get_session)):
     if body.type not in SOURCE_TYPES:
         raise HTTPException(400, f"Unknown source type '{body.type}'")
@@ -76,7 +77,7 @@ def create_source(body: sch.ConnectorIn, db: Session = Depends(get_session)):
     return src
 
 
-@router.get("/sources/{source_id}", response_model=sch.ConnectorOut)
+@router.get("/sources/{source_id}", response_model=sch.ConnectorOut, dependencies=[Depends(require_permission("sources.view"))])
 def get_source(source_id: str, db: Session = Depends(get_session)):
     src = db.get(Source, source_id)
     if not src:
@@ -84,7 +85,7 @@ def get_source(source_id: str, db: Session = Depends(get_session)):
     return src
 
 
-@router.put("/sources/{source_id}", response_model=sch.ConnectorOut)
+@router.put("/sources/{source_id}", response_model=sch.ConnectorOut, dependencies=[Depends(require_permission("sources.manage"))])
 def update_source(source_id: str, body: sch.ConnectorIn, db: Session = Depends(get_session)):
     src = db.get(Source, source_id)
     if not src:
@@ -96,7 +97,7 @@ def update_source(source_id: str, body: sch.ConnectorIn, db: Session = Depends(g
     return src
 
 
-@router.delete("/sources/{source_id}")
+@router.delete("/sources/{source_id}", dependencies=[Depends(require_permission("sources.manage"))])
 def delete_source(source_id: str, db: Session = Depends(get_session)):
     src = db.get(Source, source_id)
     if not src:
@@ -109,7 +110,7 @@ def delete_source(source_id: str, db: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@router.post("/sources/{source_id}/test", response_model=sch.TestResult)
+@router.post("/sources/{source_id}/test", response_model=sch.TestResult, dependencies=[Depends(require_permission("sources.view"))])
 def test_source(source_id: str, db: Session = Depends(get_session)):
     src = db.get(Source, source_id)
     if not src:
@@ -125,7 +126,7 @@ def test_source(source_id: str, db: Session = Depends(get_session)):
         return sch.TestResult(ok=False, message=str(exc))
 
 
-@router.post("/sources/test-config", response_model=sch.TestResult)
+@router.post("/sources/test-config", response_model=sch.TestResult, dependencies=[Depends(require_permission("sources.view"))])
 def test_source_config(body: sch.ConnectorIn):
     if body.type not in SOURCE_TYPES:
         raise HTTPException(400, f"Unknown source type '{body.type}'")
@@ -138,7 +139,8 @@ def test_source_config(body: sch.ConnectorIn):
         return sch.TestResult(ok=False, message=str(exc))
 
 
-@router.get("/sources/{source_id}/discover", response_model=list[sch.DiscoveredStream])
+@router.get("/sources/{source_id}/discover", response_model=list[sch.DiscoveredStream],
+           dependencies=[Depends(require_permission("sources.view"))])
 def discover_source(source_id: str, refresh: bool = False, db: Session = Depends(get_session)):
     src = db.get(Source, source_id)
     if not src:
@@ -176,12 +178,14 @@ def discover_source(source_id: str, refresh: bool = False, db: Session = Depends
 # ---------------------------------------------------------------------------
 # Destinations
 # ---------------------------------------------------------------------------
-@router.get("/destinations", response_model=list[sch.ConnectorOut])
+@router.get("/destinations", response_model=list[sch.ConnectorOut],
+           dependencies=[Depends(require_permission("destinations.view"))])
 def list_destinations(db: Session = Depends(get_session)):
     return db.execute(select(Destination).order_by(Destination.created_at.desc())).scalars().all()
 
 
-@router.post("/destinations", response_model=sch.ConnectorOut)
+@router.post("/destinations", response_model=sch.ConnectorOut,
+            dependencies=[Depends(require_permission("destinations.manage"))])
 def create_destination(body: sch.ConnectorIn, db: Session = Depends(get_session)):
     if body.type not in DESTINATION_TYPES:
         raise HTTPException(400, f"Unknown destination type '{body.type}'")
@@ -194,7 +198,8 @@ def create_destination(body: sch.ConnectorIn, db: Session = Depends(get_session)
     return dst
 
 
-@router.get("/destinations/{destination_id}", response_model=sch.ConnectorOut)
+@router.get("/destinations/{destination_id}", response_model=sch.ConnectorOut,
+           dependencies=[Depends(require_permission("destinations.view"))])
 def get_destination(destination_id: str, db: Session = Depends(get_session)):
     dst = db.get(Destination, destination_id)
     if not dst:
@@ -202,7 +207,8 @@ def get_destination(destination_id: str, db: Session = Depends(get_session)):
     return dst
 
 
-@router.put("/destinations/{destination_id}", response_model=sch.ConnectorOut)
+@router.put("/destinations/{destination_id}", response_model=sch.ConnectorOut,
+           dependencies=[Depends(require_permission("destinations.manage"))])
 def update_destination(destination_id: str, body: sch.ConnectorIn, db: Session = Depends(get_session)):
     dst = db.get(Destination, destination_id)
     if not dst:
@@ -213,7 +219,7 @@ def update_destination(destination_id: str, body: sch.ConnectorIn, db: Session =
     return dst
 
 
-@router.delete("/destinations/{destination_id}")
+@router.delete("/destinations/{destination_id}", dependencies=[Depends(require_permission("destinations.manage"))])
 def delete_destination(destination_id: str, db: Session = Depends(get_session)):
     dst = db.get(Destination, destination_id)
     if not dst:
@@ -225,7 +231,8 @@ def delete_destination(destination_id: str, db: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@router.post("/destinations/{destination_id}/test", response_model=sch.TestResult)
+@router.post("/destinations/{destination_id}/test", response_model=sch.TestResult,
+            dependencies=[Depends(require_permission("destinations.view"))])
 def test_destination(destination_id: str, db: Session = Depends(get_session)):
     dst = db.get(Destination, destination_id)
     if not dst:
@@ -239,7 +246,8 @@ def test_destination(destination_id: str, db: Session = Depends(get_session)):
         return sch.TestResult(ok=False, message=str(exc))
 
 
-@router.post("/destinations/test-config", response_model=sch.TestResult)
+@router.post("/destinations/test-config", response_model=sch.TestResult,
+            dependencies=[Depends(require_permission("destinations.view"))])
 def test_destination_config(body: sch.ConnectorIn):
     if body.type not in DESTINATION_TYPES:
         raise HTTPException(400, f"Unknown destination type '{body.type}'")
@@ -255,12 +263,14 @@ def test_destination_config(body: sch.ConnectorIn):
 # ---------------------------------------------------------------------------
 # Connections
 # ---------------------------------------------------------------------------
-@router.get("/connections", response_model=list[sch.ConnectionOut])
+@router.get("/connections", response_model=list[sch.ConnectionOut],
+           dependencies=[Depends(require_permission("connections.view"))])
 def list_connections(db: Session = Depends(get_session)):
     return db.execute(select(Connection).order_by(Connection.created_at.desc())).scalars().all()
 
 
-@router.post("/connections", response_model=sch.ConnectionOut)
+@router.post("/connections", response_model=sch.ConnectionOut,
+            dependencies=[Depends(require_permission("connections.manage"))])
 def create_connection(body: sch.ConnectionIn, db: Session = Depends(get_session)):
     source = db.get(Source, body.source_id)
     destination = db.get(Destination, body.destination_id)
@@ -296,7 +306,8 @@ def create_connection(body: sch.ConnectionIn, db: Session = Depends(get_session)
     return conn
 
 
-@router.get("/connections/{connection_id}", response_model=sch.ConnectionOut)
+@router.get("/connections/{connection_id}", response_model=sch.ConnectionOut,
+           dependencies=[Depends(require_permission("connections.view"))])
 def get_connection(connection_id: str, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -304,7 +315,8 @@ def get_connection(connection_id: str, db: Session = Depends(get_session)):
     return conn
 
 
-@router.patch("/connections/{connection_id}", response_model=sch.ConnectionOut)
+@router.patch("/connections/{connection_id}", response_model=sch.ConnectionOut,
+             dependencies=[Depends(require_permission("connections.manage"))])
 def patch_connection(connection_id: str, body: sch.ConnectionPatch, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -337,7 +349,7 @@ def patch_connection(connection_id: str, body: sch.ConnectionPatch, db: Session 
     return conn
 
 
-@router.delete("/connections/{connection_id}")
+@router.delete("/connections/{connection_id}", dependencies=[Depends(require_permission("connections.manage"))])
 def delete_connection(connection_id: str, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -348,7 +360,7 @@ def delete_connection(connection_id: str, db: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@router.post("/connections/{connection_id}/run")
+@router.post("/connections/{connection_id}/run", dependencies=[Depends(require_permission("connections.operate"))])
 def trigger_run(connection_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -362,7 +374,7 @@ def trigger_run(connection_id: str, background_tasks: BackgroundTasks, db: Sessi
     return {"ok": True, "status": "started"}
 
 
-@router.post("/connections/{connection_id}/resync")
+@router.post("/connections/{connection_id}/resync", dependencies=[Depends(require_permission("connections.operate"))])
 def resync_connection(connection_id: str, body: sch.ResyncRequest, background_tasks: BackgroundTasks,
                       db: Session = Depends(get_session)):
     """Forces a full reload — for incremental/xmin streams this drops the
@@ -413,7 +425,7 @@ def resync_connection(connection_id: str, body: sch.ResyncRequest, background_ta
     return {"ok": True, "mode": "batch", "streams": targets}
 
 
-@router.post("/connections/{connection_id}/start")
+@router.post("/connections/{connection_id}/start", dependencies=[Depends(require_permission("connections.operate"))])
 def start_cdc(connection_id: str, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -426,7 +438,7 @@ def start_cdc(connection_id: str, db: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@router.post("/connections/{connection_id}/stop")
+@router.post("/connections/{connection_id}/stop", dependencies=[Depends(require_permission("connections.operate"))])
 def stop_cdc(connection_id: str, db: Session = Depends(get_session)):
     conn = db.get(Connection, connection_id)
     if not conn:
@@ -441,7 +453,8 @@ def stop_cdc(connection_id: str, db: Session = Depends(get_session)):
     return {"ok": True}
 
 
-@router.get("/connections/{connection_id}/runs", response_model=list[sch.SyncRunOut])
+@router.get("/connections/{connection_id}/runs", response_model=list[sch.SyncRunOut],
+           dependencies=[Depends(require_permission("connections.view"))])
 def list_runs(connection_id: str, limit: int = 50, db: Session = Depends(get_session)):
     q = (select(SyncRun).where(SyncRun.connection_id == connection_id)
          .order_by(SyncRun.started_at.desc()).limit(min(limit, 200)))
@@ -451,7 +464,7 @@ def list_runs(connection_id: str, limit: int = 50, db: Session = Depends(get_ses
 # ---------------------------------------------------------------------------
 # Logs
 # ---------------------------------------------------------------------------
-@router.get("/logs", response_model=list[sch.LogOut])
+@router.get("/logs", response_model=list[sch.LogOut], dependencies=[Depends(require_permission("logs.view"))])
 def get_logs(connection_id: str | None = None, limit: int = 200, db: Session = Depends(get_session)):
     q = select(LogEntry)
     if connection_id:
@@ -467,6 +480,10 @@ def get_logs(connection_id: str | None = None, limit: int = 200, db: Session = D
 # ---------------------------------------------------------------------------
 @router.websocket("/ws")
 async def ws_events(websocket: WebSocket):
+    if not await get_ws_user(websocket.cookies.get(SESSION_COOKIE)):
+        await websocket.close(code=4401)  # custom: "not authenticated"
+        return
+
     await websocket.accept()
     queue = subscribe()
     try:
