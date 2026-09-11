@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HolyPipe</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> HolyPipe</div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="connections">Connections</button>
+    <button class="tab" data-tab="sources">Sources</button>
+    <button class="tab" data-tab="destinations">Destinations</button>
+    <button class="tab" data-tab="logs">Live Logs</button>
+  </nav>
+  <div class="ws-status" id="wsStatus">connecting…</div>
+</header>
+
+<main>
+  <section id="panel-connections" class="panel active">
+    <div class="panel-head">
+      <h2>Connections</h2>
+      <button class="btn primary" id="newConnectionBtn">+ New Connection</button>
+    </div>
+    <div id="connectionsList" class="cards"></div>
+  </section>
+
+  <section id="panel-sources" class="panel">
+    <div class="panel-head">
+      <h2>Sources</h2>
+      <button class="btn primary" id="newSourceBtn">+ New Source</button>
+    </div>
+    <div id="sourcesList" class="cards"></div>
+  </section>
+
+  <section id="panel-destinations" class="panel">
+    <div class="panel-head">
+      <h2>Destinations</h2>
+      <button class="btn primary" id="newDestinationBtn">+ New Destination</button>
+    </div>
+    <div id="destinationsList" class="cards"></div>
+  </section>
+
+  <section id="panel-logs" class="panel">
+    <div class="panel-head">
+      <h2>Live Logs</h2>
+      <button class="btn" id="clearLogsBtn">Clear</button>
+    </div>
+    <div id="logConsole" class="console"></div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modal"></div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

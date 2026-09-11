@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.local
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite
+.venv/
+venv/
+holypipe.txt
+
+# editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# logs / test artifacts
+*.log
+.pytest_cache/
+.coverage
+htmlcov/

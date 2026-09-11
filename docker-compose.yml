@@ -1,0 +1,98 @@
+services:
+  holypipe:
+    build: .
+    container_name: holypipe
+    ports:
+      - "8090:8000"
+    environment:
+      HOLYPIPE_METADATA_URL: sqlite:////data/holypipe.db
+      HOLYPIPE_SCHEDULER: "1"
+      HOLYPIPE_BATCH_SIZE: "1000"
+      HOLYPIPE_CDC_FLUSH_SECONDS: "1.0"
+      HOLYPIPE_LOG_LEVEL: "INFO"
+    volumes:
+      - holypipe_data:/data
+    depends_on:
+      postgres_demo:
+        condition: service_healthy
+      mysql_demo:
+        condition: service_healthy
+      warehouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- demo source: PostgreSQL with logical replication enabled -------------
+  postgres_demo:
+    image: postgres:16-alpine
+    container_name: holypipe_postgres_demo
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
+      - "-c"
+      - "max_replication_slots=8"
+      - "-c"
+      - "max_wal_senders=8"
+    environment:
+      POSTGRES_DB: shop
+      POSTGRES_USER: holypipe
+      POSTGRES_PASSWORD: holypipe
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_demo_data:/var/lib/postgresql/data
+      - ./demo/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U holypipe -d shop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- demo source: MySQL with row-based binlog enabled ----------------------
+  mysql_demo:
+    image: mysql:8.0
+    container_name: holypipe_mysql_demo
+    command:
+      - "--log-bin=mysql-bin"
+      - "--binlog-format=ROW"
+      - "--server-id=1001"
+      - "--gtid-mode=OFF"
+    environment:
+      MYSQL_DATABASE: shop
+      MYSQL_USER: holypipe
+      MYSQL_PASSWORD: holypipe
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_demo_data:/var/lib/mysql
+      - ./demo/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # --- demo destination: empty PostgreSQL warehouse --------------------------
+  warehouse:
+    image: postgres:16-alpine
+    container_name: holypipe_warehouse
+    environment:
+      POSTGRES_DB: warehouse
+      POSTGRES_USER: holypipe
+      POSTGRES_PASSWORD: holypipe
+    ports:
+      - "5434:5432"
+    volumes:
+      - warehouse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U holypipe -d warehouse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  holypipe_data:
+  pg_demo_data:
+  mysql_demo_data:
+  warehouse_data:
