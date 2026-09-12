@@ -24,3 +24,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# mkdocs build output
+site/

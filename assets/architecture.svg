@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 700" width="1160" height="700" role="img" aria-label="HolyPipe architecture diagram">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4fd1c5"/>
+    </marker>
+    <linearGradient id="coreFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171f2a"/>
+      <stop offset="1" stop-color="#121821"/>
+    </linearGradient>
+    <style>
+      .lbl { font: 600 15px system-ui, -apple-system, Segoe UI, sans-serif; fill: #e6edf3; }
+      .sub { font: 500 12px system-ui, -apple-system, Segoe UI, sans-serif; fill: #8b98a9; }
+      .box { font: 600 13px system-ui, -apple-system, Segoe UI, sans-serif; fill: #e6edf3; }
+      .tag { font: 600 11px system-ui, -apple-system, Segoe UI, sans-serif; fill: #0b0f14; }
+      .edge { stroke: #4fd1c5; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge2 { stroke: #63b3ed; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1160" height="700" fill="#0b0f14"/>
+
+  <!-- section labels -->
+  <text x="90" y="46" class="lbl">Sources</text>
+  <text x="1000" y="46" class="lbl" text-anchor="end">Destinations</text>
+  <text x="580" y="46" class="lbl" text-anchor="middle">HolyPipe (one container)</text>
+
+  <!-- source boxes -->
+  <g>
+    <rect x="20" y="70" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="90" y="101" class="box" text-anchor="middle">PostgreSQL</text>
+    <rect x="20" y="140" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="90" y="171" class="box" text-anchor="middle">MySQL</text>
+    <rect x="20" y="210" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="90" y="241" class="box" text-anchor="middle">SQLite</text>
+  </g>
+
+  <!-- destination boxes -->
+  <g>
+    <rect x="1000" y="70" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="1070" y="101" class="box" text-anchor="middle">PostgreSQL</text>
+    <rect x="1000" y="140" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="1070" y="171" class="box" text-anchor="middle">MySQL</text>
+    <rect x="1000" y="210" width="140" height="52" rx="10" fill="#121821" stroke="#253041"/>
+    <text x="1070" y="241" class="box" text-anchor="middle">SQLite</text>
+  </g>
+
+  <!-- core container -->
+  <rect x="220" y="66" width="720" height="330" rx="18" fill="url(#coreFill)" stroke="#4fd1c5" stroke-width="1.5"/>
+
+  <!-- connectors row inside core -->
+  <rect x="248" y="96" width="200" height="46" rx="9" fill="#0b0f14" stroke="#253041"/>
+  <text x="348" y="124" class="box" text-anchor="middle">Source connectors</text>
+
+  <rect x="712" y="96" width="200" height="46" rx="9" fill="#0b0f14" stroke="#253041"/>
+  <text x="812" y="124" class="box" text-anchor="middle">Destination connectors</text>
+
+  <!-- sync engine -->
+  <rect x="248" y="164" width="664" height="90" rx="12" fill="#0b0f14" stroke="#253041"/>
+  <text x="580" y="186" class="box" text-anchor="middle">Sync engine</text>
+  <rect x="266" y="198" width="290" height="42" rx="8" fill="#121821" stroke="#253041"/>
+  <text x="411" y="224" class="box" text-anchor="middle">Batch — full refresh / incremental / xmin</text>
+  <rect x="586" y="198" width="290" height="42" rx="8" fill="#121821" stroke="#253041"/>
+  <text x="731" y="224" class="box" text-anchor="middle">CDC — logical repl. / binlog / triggers</text>
+
+  <!-- scheduler + metadata store -->
+  <rect x="248" y="270" width="200" height="46" rx="9" fill="#0b0f14" stroke="#253041"/>
+  <text x="348" y="298" class="box" text-anchor="middle">Scheduler</text>
+  <rect x="470" y="270" width="220" height="46" rx="9" fill="#0b0f14" stroke="#253041"/>
+  <text x="580" y="298" class="box" text-anchor="middle">Metadata store (SQLite)</text>
+  <rect x="712" y="270" width="200" height="46" rx="9" fill="#0b0f14" stroke="#253041"/>
+  <text x="812" y="298" class="box" text-anchor="middle">Auth &amp; RBAC</text>
+
+  <!-- exposed surfaces -->
+  <rect x="248" y="336" width="200" height="46" rx="9" fill="#0f2a27" stroke="#4fd1c5"/>
+  <text x="348" y="364" class="box" text-anchor="middle">Web dashboard</text>
+  <rect x="470" y="336" width="220" height="46" rx="9" fill="#0f2a27" stroke="#4fd1c5"/>
+  <text x="580" y="364" class="box" text-anchor="middle">REST API</text>
+  <rect x="712" y="336" width="200" height="46" rx="9" fill="#12283a" stroke="#63b3ed"/>
+  <text x="812" y="364" class="box" text-anchor="middle">MCP server (/mcp)</text>
+
+  <!-- external actors -->
+  <rect x="248" y="430" width="200" height="52" rx="10" fill="#121821" stroke="#253041"/>
+  <text x="348" y="461" class="box" text-anchor="middle">Browser</text>
+  <rect x="712" y="430" width="200" height="52" rx="10" fill="#121821" stroke="#253041"/>
+  <text x="812" y="456" class="box" text-anchor="middle">AI agents</text>
+  <text x="812" y="472" class="sub" text-anchor="middle">Claude · Copilot · Codex · …</text>
+
+  <!-- edges: sources -> connectors -->
+  <path class="edge" d="M160,96 L248,119"/>
+  <path class="edge" d="M160,166 L248,119"/>
+  <path class="edge" d="M160,236 L248,119"/>
+
+  <!-- connectors -> sync engine -->
+  <path class="edge" d="M348,142 L348,164"/>
+  <path class="edge" d="M812,142 L812,164"/>
+
+  <!-- sync engine -> destination connectors -->
+  <path class="edge" d="M812,164 L812,142"/>
+
+  <!-- destination connectors -> destinations -->
+  <path class="edge" d="M912,119 L1000,96"/>
+  <path class="edge" d="M912,119 L1000,166"/>
+  <path class="edge" d="M912,119 L1000,236"/>
+
+  <!-- scheduler/metadata/auth <-> sync engine -->
+  <path class="edge" d="M348,270 L348,254"/>
+  <path class="edge" d="M580,270 L580,254"/>
+  <path class="edge" d="M812,270 L812,254"/>
+
+  <!-- exposed surfaces <-> core -->
+  <path class="edge" d="M348,336 L348,316"/>
+  <path class="edge" d="M580,336 L580,316"/>
+  <path class="edge2" d="M812,336 L812,316"/>
+
+  <!-- browser -> dashboard, agents -> mcp -->
+  <path class="edge" d="M348,430 L348,382"/>
+  <path class="edge2" d="M812,430 L812,382"/>
+
+  <text x="580" y="500" class="sub" text-anchor="middle">Every arrow between Sources/Destinations and HolyPipe is a real database connection —</text>
+  <text x="580" y="518" class="sub" text-anchor="middle">no message broker, no separate worker fleet. One Python process, one container.</text>
+</svg>

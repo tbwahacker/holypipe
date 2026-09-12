@@ -1,0 +1,66 @@
+site_name: HolyPipe Documentation
+site_description: >-
+  HolyPipe is a scoped ELT / CDC data-replication tool for PostgreSQL, MySQL,
+  and SQLite — real-time sync, batch sync, a web dashboard, and a built-in
+  MCP server for AI agents. Documentation, guides, and setup instructions.
+site_url: https://tbwahacker.github.io/holypipe/
+repo_url: https://github.com/tbwahacker/holypipe
+repo_name: tbwahacker/holypipe
+edit_uri: edit/main/docs/
+site_author: tbwahacker
+
+theme:
+  name: material
+  logo: assets/logo-icon.svg
+  favicon: assets/logo-icon.svg
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - User Guide: USER_GUIDE.md
+  - Administrator Guide: ADMIN_GUIDE.md
+  - Developer Guide: DEVELOPER_GUIDE.md
+  - MCP Integration: MCP_INTEGRATION.md
+
+plugins:
+  - search
+  # No separate sitemap plugin needed — mkdocs generates sitemap.xml
+  # automatically at build time whenever site_url is set (above).
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tbwahacker/holypipe
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/holypipe/
+    - icon: fontawesome/brands/docker
+      link: https://github.com/tbwahacker/holypipe/pkgs/container/holypipe

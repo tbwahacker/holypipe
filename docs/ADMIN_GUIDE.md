@@ -1,3 +1,11 @@
+---
+title: HolyPipe Administrator Guide — Install, Configure, Operate
+description: >-
+  How to deploy HolyPipe with Docker or pip, configure it, enable CDC on
+  your own PostgreSQL/MySQL/SQLite databases, back it up, and secure it —
+  for anyone running HolyPipe in production.
+---
+
 # HolyPipe — Administrator Guide
 
 Deploying, configuring, and operating HolyPipe. For using the dashboard
