@@ -154,6 +154,14 @@ The **Live Logs** tab streams everything HolyPipe is doing across every
 connection, in real time, over a websocket — useful for watching a sync
 happen or diagnosing a problem as it occurs rather than after the fact.
 
+## Using AI agents (MCP)
+
+Click your username in the top bar to create an API token, then hand it to
+Claude, Copilot, Codex, or any other MCP-capable agent — it can create
+connectors, run/resync syncs, and read logs on your behalf, acting with
+your own permissions. See the
+[MCP Integration Guide](MCP_INTEGRATION.md) for setup steps.
+
 ## Frequently asked questions
 
 **Does deleting a source/destination delete the underlying database?**

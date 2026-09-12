@@ -173,3 +173,23 @@ class UserSession(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
     expires_at: Mapped[dt.datetime] = mapped_column(DateTime, index=True)
+
+
+class ApiToken(Base):
+    """A long-lived personal access token for non-interactive callers — AI
+    agents (via the MCP server) and scripts hitting the REST API directly —
+    that can't do the cookie-based login flow. Holds the same permissions as
+    the issuing user, so it's a bearer credential, not a login: only the
+    sha256 hash is stored, and the plaintext token is shown exactly once, at
+    creation time."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    token_prefix: Mapped[str] = mapped_column(String(16))  # shown in the UI to tell tokens apart
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    last_used_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True, index=True)

@@ -18,6 +18,8 @@ from .db import init_db
 from .engine.recovery import recover_orphaned_state
 from .engine.scheduler import start_scheduler, stop_scheduler
 from .logging_util import log
+from .mcp_server import asgi_app as mcp_asgi_app
+from .mcp_server import mcp as mcp_instance
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "web", "static")
 
@@ -34,16 +36,22 @@ async def lifespan(app: FastAPI):
     else:
         log("HolyPipe scheduler disabled (HOLYPIPE_SCHEDULER=0)")
     log("HolyPipe API ready")
-    try:
-        yield
-    finally:
-        stop_scheduler()
-        pump_task.cancel()
+    # The MCP session manager backs the /mcp Streamable HTTP mount below —
+    # it has to be running for the whole app lifetime, entered here rather
+    # than left to the sub-app's own lifespan, which Starlette never invokes
+    # for a mounted (non-root) ASGI app.
+    async with mcp_instance.session_manager.run():
+        try:
+            yield
+        finally:
+            stop_scheduler()
+            pump_task.cancel()
 
 
-app = FastAPI(title="HolyPipe", version="1.0.2", lifespan=lifespan)
+app = FastAPI(title="HolyPipe", version="1.1.0", lifespan=lifespan)
 app.include_router(auth_router)
 app.include_router(api_router)
+app.mount("/mcp", mcp_asgi_app)
 
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

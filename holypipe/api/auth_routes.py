@@ -1,6 +1,8 @@
 """Login/session endpoints, plus user and role management."""
 from __future__ import annotations
 
+import datetime as dt
+
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from ..auth import (
     SESSION_COOKIE,
     SESSION_TTL_DAYS,
     AuthUser,
+    create_api_token,
     create_session,
     destroy_all_sessions_for,
     destroy_session,
@@ -18,10 +21,12 @@ from ..auth import (
     hash_password,
     login_throttle,
     require_permission,
+    revoke_api_token,
     verify_password,
 )
 from ..db import get_session
-from ..models import Role, User
+from ..models import ApiToken, Role, User
+from ..timeutil import utcnow
 from . import schemas as sch
 
 router = APIRouter(prefix="/api")
@@ -216,4 +221,37 @@ def delete_user(user_id: str, current: AuthUser = Depends(get_current_user), db:
     db.delete(user)
     db.commit()
     destroy_all_sessions_for(user_id)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# API tokens — self-service personal access tokens for non-interactive
+# callers (AI agents via MCP, scripts) that can't do the cookie login flow.
+# A token carries the issuing user's own permissions; there's no separate
+# scoping, so anyone with users.manage can also see (never the plaintext)
+# and revoke another user's tokens the same way they can deactivate the
+# account itself.
+# ---------------------------------------------------------------------------
+@router.get("/tokens", response_model=list[sch.ApiTokenOut])
+def list_my_tokens(user: AuthUser = Depends(get_current_user), db: Session = Depends(get_session)):
+    q = select(ApiToken).where(ApiToken.user_id == user.id).order_by(ApiToken.created_at.desc())
+    return db.execute(q).scalars().all()
+
+
+@router.post("/tokens", response_model=sch.ApiTokenCreated)
+def create_my_token(body: sch.ApiTokenIn, user: AuthUser = Depends(get_current_user)):
+    expires_at = (utcnow() + dt.timedelta(days=body.expires_in_days)) if body.expires_in_days else None
+    plain, row = create_api_token(user.id, body.name, expires_at)
+    return sch.ApiTokenCreated(
+        id=row.id, name=row.name, token_prefix=row.token_prefix, created_at=row.created_at,
+        last_used_at=row.last_used_at, expires_at=row.expires_at, token=plain,
+    )
+
+
+@router.delete("/tokens/{token_id}")
+def delete_my_token(token_id: str, user: AuthUser = Depends(get_current_user), db: Session = Depends(get_session)):
+    row = db.get(ApiToken, token_id)
+    if not row or (row.user_id != user.id and not user.has("users.manage")):
+        raise HTTPException(404, "Token not found")
+    revoke_api_token(token_id)
     return {"ok": True}

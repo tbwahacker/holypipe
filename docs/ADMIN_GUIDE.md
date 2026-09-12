@@ -162,11 +162,20 @@ for you.
 
 ## Security notes
 
-- **No authentication is built in.** Anyone who can reach the HolyPipe
-  port can view and edit every source/destination credential and trigger
-  syncs. Do not expose it directly to the internet — put it behind a
-  reverse proxy with your own auth (basic auth, SSO, an IP allowlist,
-  whatever fits your environment), or keep it on a private network.
+- **Login is required** (default `admin`/`admin`, forced password change on
+  first login) with dynamic roles/permissions — see the Administrator
+  Guide's user management section for creating additional users and
+  scoping their access. HolyPipe still doesn't terminate TLS itself, so put
+  it behind a reverse proxy with HTTPS before exposing it beyond a private
+  network or trusted VPN.
+- **API tokens** (created from the dashboard's top-bar username menu, or
+  `POST /api/tokens`) let scripts and AI agents — including the built-in
+  MCP server at `/mcp` — act with a user's permissions without the
+  cookie-based login flow. A token is a real credential: only ever transmit
+  it over HTTPS, give it to an agent from a least-privilege role rather
+  than an Administrator account when possible, and revoke it immediately
+  if it might have leaked. See the
+  [MCP Integration Guide](MCP_INTEGRATION.md).
 - Source and destination credentials (including passwords) are stored in
   **plaintext** in the metadata database (`HOLYPIPE_METADATA_URL`) and are
   returned as plaintext by the API to populate the edit form. Treat that
