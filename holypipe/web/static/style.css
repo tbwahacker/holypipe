@@ -317,6 +317,14 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
 .field.checkbox label { margin-bottom: 0; text-transform: none; font-size: 13px; font-weight: 500; color: var(--text); }
 .field.checkbox input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 .field .hint { color: var(--muted); font-size: 11px; margin-top: 5px; }
+.password-field { position: relative; }
+.password-field input[type=password], .password-field input[type=text] { padding-right: 38px; }
+.password-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: 15px;
+  color: var(--muted); padding: 4px 8px; line-height: 1;
+}
+.password-toggle:hover { color: var(--text); }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 .form-grid .span2 { grid-column: 1 / -1; }

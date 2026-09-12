@@ -234,6 +234,20 @@ function fieldNode(field, value) {
     placeholder: field.default !== undefined ? String(field.default) : "" });
   if (value !== undefined && value !== null) input.value = value;
   else if (field.default !== undefined && field.kind === "number") input.value = field.default;
+
+  if (field.kind === "password") {
+    const toggleBtn = el("button", {
+      type: "button", class: "password-toggle", title: "Show/hide password",
+    }, "👁");
+    toggleBtn.addEventListener("click", () => {
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      toggleBtn.textContent = showing ? "👁" : "🙈";
+    });
+    wrap.append(label, el("div", { class: "password-field" }, [input, toggleBtn]));
+    return wrap;
+  }
+
   wrap.append(label, input);
   return wrap;
 }
@@ -310,6 +324,37 @@ const URI_PLACEHOLDERS = {
   sqlite: "sqlite:////data/app.db",
 };
 
+// Mirrors connectors/dsn.py's parse_dsn() in reverse, so the URI field always
+// reflects the current form fields — including right after opening "Edit"
+// on a connector that was originally set up via form fields, which never
+// had a URI to begin with.
+function configToUri(type, config) {
+  const enc = (v) => encodeURIComponent(v ?? "");
+  if (type === "sqlite") {
+    const path = config.path || "";
+    if (!path) return "";
+    return path.startsWith("/") ? `sqlite://${path}` : `sqlite:///${path}`;
+  }
+  const scheme = type === "postgres" ? "postgresql" : "mysql";
+  const host = config.host || "localhost";
+  const port = config.port || (type === "postgres" ? 5432 : 3306);
+  const database = config.database || "";
+  const username = config.username || "";
+  const password = config.password || "";
+  const auth = username ? `${enc(username)}${password ? ":" + enc(password) : ""}@` : "";
+  const params = [];
+  if (type === "postgres") {
+    if (config.sslmode) params.push(`sslmode=${enc(config.sslmode)}`);
+    if (config.schemas) params.push(`schemas=${enc(config.schemas)}`);
+    if (config.replication_slot) params.push(`replication_slot=${enc(config.replication_slot)}`);
+  } else if (type === "mysql") {
+    if (config.ssl_mode) params.push(`ssl_mode=${enc(config.ssl_mode)}`);
+    if (config.server_id) params.push(`server_id=${enc(config.server_id)}`);
+  }
+  const qs = params.length ? `?${params.join("&")}` : "";
+  return `${scheme}://${auth}${host}:${port}/${enc(database)}${qs}`;
+}
+
 function openConnectorModal(kind, existing) {
   const types = kind === "source" ? state.connectorTypes.sources : state.connectorTypes.destinations;
   const isEdit = !!existing;
@@ -346,12 +391,31 @@ function openConnectorModal(kind, existing) {
   formModeBtn.addEventListener("click", () => setMode("form"));
   uriModeBtn.addEventListener("click", () => setMode("uri"));
 
+  // Keeps the URI field showing the equivalent of whatever's in the form
+  // fields, so it's always accurate — including immediately after opening
+  // "Edit" on a connector that was set up via form fields and never had a
+  // URI of its own to begin with.
+  function syncUriFromForm() {
+    const type = typeSelect.value;
+    const spec = types.find((t) => t.type === type);
+    if (!spec) return;
+    // Read from fieldsWrap directly, not `form` — this runs during the very
+    // first renderFields() call too, before fieldsWrap has been appended
+    // into `form`, so form.querySelector wouldn't find anything yet.
+    uriInput.value = configToUri(type, readConfigForm(fieldsWrap, spec.fields));
+  }
+
   function renderFields(typeName) {
     fieldsWrap.innerHTML = "";
     const spec = types.find((t) => t.type === typeName);
     const values = existing && existing.type === typeName ? existing.config : {};
     (spec ? spec.fields : []).forEach((f) => fieldsWrap.appendChild(fieldNode(f, values[f.name])));
     uriInput.placeholder = URI_PLACEHOLDERS[typeName] || "";
+    syncUriFromForm();
+    fieldsWrap.querySelectorAll("input, select").forEach((input) => {
+      input.addEventListener("input", syncUriFromForm);
+      input.addEventListener("change", syncUriFromForm);
+    });
   }
   renderFields(typeSelect.value);
   typeSelect.addEventListener("change", () => renderFields(typeSelect.value));
