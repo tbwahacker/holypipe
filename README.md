@@ -79,7 +79,7 @@ live web dashboard.
   [MCP](https://modelcontextprotocol.io)-capable agent at `/mcp` with a
   personal access token, and it can create connectors, run/resync syncs, and
   read back logs and run history — using the same permissions model as the
-  dashboard. See the [MCP Integration Guide](docs/MCP_INTEGRATION.md).
+  dashboard. See the [MCP Integration Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/MCP_INTEGRATION.md).
 - **Everything else Airbyte doesn't need to be**: no Java, no Temporal, no
   connector marketplace. One Python process, one container.
 
