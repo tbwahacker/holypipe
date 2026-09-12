@@ -150,6 +150,10 @@ class ConnectionIn(BaseModel):
     destination_namespace: str | None = None
     table_prefix: str = ""
     streams: list[dict] = Field(default_factory=list)
+    # Set by the frontend when fanning out to multiple sources against the
+    # same destination, so they render as one multi-source pipeline instead
+    # of unrelated duplicates — see fanOutConnections in app.js.
+    group_id: str | None = None
 
 
 class ConnectionPatch(BaseModel):
@@ -162,6 +166,7 @@ class ConnectionPatch(BaseModel):
     destination_namespace: str | None = None
     table_prefix: str | None = None
     streams: list[dict] | None = None
+    group_id: str | None = None
 
 
 class ConnectionOut(BaseModel):
@@ -177,6 +182,7 @@ class ConnectionOut(BaseModel):
     destination_namespace: str | None
     table_prefix: str
     streams: list
+    group_id: str | None
     status: str
     status_detail: str | None
     last_run_at: dt.datetime | None
