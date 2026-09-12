@@ -7,7 +7,7 @@ from typing import Any
 from ..bus import publish
 from ..config import settings
 from ..connectors import build_destination, build_source
-from ..connectors.base import ConnectorError, StreamSchema
+from ..connectors.base import ConnectorError, StreamSchema, shadow_table_name
 from ..db import session_scope
 from ..logging_util import log
 from ..models import Connection, SyncRun
@@ -89,14 +89,21 @@ def run_batch_sync(connection_id: str, *, trigger: str = "manual",
                 schema.columns = [c for c in schema.columns if c.name in working_cols]
             read_columns = schema.column_names() if selected_columns else None
 
-            destination.prepare(dest_table, schema, namespace)
+            # full_refresh loads into a shadow table and swaps it in only
+            # once fully written, so a reader querying the destination mid-
+            # sync sees the complete old table or the complete new one —
+            # never a truncated-but-still-loading table (see swap_in()).
+            if sync_mode == "full_refresh":
+                write_table = shadow_table_name(dest_table)
+                destination.prepare(write_table, schema, namespace)
+                destination.truncate(write_table, namespace)
+            else:
+                write_table = dest_table
+                destination.prepare(write_table, schema, namespace)
 
             cursor_value = None
             if incremental and cursor_field:
                 cursor_value = (state.get("cursors") or {}).get(schema.name)
-
-            if sync_mode == "full_refresh":
-                destination.truncate(dest_table, namespace)
 
             read_count = written_count = 0
             max_seen = cursor_value
@@ -120,13 +127,16 @@ def run_batch_sync(connection_id: str, *, trigger: str = "manual",
                             max_seen = row[cursor_field]
 
                 write_mode = "upsert" if pk else "append"
-                written_count += destination.write(dest_table, namespace, columns, rows,
+                written_count += destination.write(write_table, namespace, columns, rows,
                                                     primary_key=pk, mode=write_mode)
 
                 totals["read"] += len(batch)
                 totals["written"] += len(rows)
                 publish("run_progress", connection_id=connection_id, run_id=run_id,
                        stream=schema.name, read=totals["read"], written=totals["written"])
+
+            if sync_mode == "full_refresh":
+                destination.swap_in(dest_table, namespace, write_table)
 
             if incremental and cursor_field and max_seen is not None:
                 cursors = state.setdefault("cursors", {})

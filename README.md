@@ -19,7 +19,18 @@ live web dashboard.
 
 📖 **Guides:** [User Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/USER_GUIDE.md) ·
 [Administrator Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/ADMIN_GUIDE.md) ·
-[Developer Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/DEVELOPER_GUIDE.md)
+[Developer Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/DEVELOPER_GUIDE.md) ·
+[MCP Integration Guide](https://github.com/tbwahacker/holypipe/blob/main/docs/MCP_INTEGRATION.md)
+
+## Screenshots
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/screenshots/dashboard-connections.png" alt="HolyPipe connections dashboard" width="800">
+  <br><em>Connections dashboard</em>
+  <br><br>
+  <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/screenshots/connection-detail.png" alt="HolyPipe connection detail view" width="800">
+  <br><em>Connection detail — per-table sync mode, resync, and run history</em>
+</p>
 
 ## What it does
 
@@ -61,6 +72,11 @@ live web dashboard.
 - **Live dashboard**: create sources/destinations/connections, start/stop
   syncs, and watch a live log/event stream over a websocket — all from
   `http://localhost:8090`.
+- **Built-in MCP server**: point Claude, Copilot, Codex, or any other
+  [MCP](https://modelcontextprotocol.io)-capable agent at `/mcp` with a
+  personal access token, and it can create connectors, run/resync syncs, and
+  read back logs and run history — using the same permissions model as the
+  dashboard. See the [MCP Integration Guide](docs/MCP_INTEGRATION.md).
 - **Everything else Airbyte doesn't need to be**: no Java, no Temporal, no
   connector marketplace. One Python process, one container.
 

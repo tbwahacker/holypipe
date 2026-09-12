@@ -32,6 +32,7 @@ from .base import (
     Column,
     ConnectorError,
     StreamSchema,
+    bounded_name,
     normalize_record,
     normalize_value,
 )
@@ -332,3 +333,20 @@ class SqliteDestination(SqliteMixin, BaseDestination):
     def truncate(self, table: str, namespace: str | None) -> None:
         conn = self._get_conn()
         conn.execute(f'DELETE FROM "{table}"')
+
+    def swap_in(self, table: str, namespace: str | None, shadow_table: str) -> None:
+        conn = self._get_conn()
+        existing = conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+        conn.execute("BEGIN")
+        try:
+            if existing:
+                old = bounded_name(table, "__hpold")
+                conn.execute(f'ALTER TABLE "{table}" RENAME TO "{old}"')
+                conn.execute(f'ALTER TABLE "{shadow_table}" RENAME TO "{table}"')
+                conn.execute(f'DROP TABLE "{old}"')
+            else:
+                conn.execute(f'ALTER TABLE "{shadow_table}" RENAME TO "{table}"')
+            conn.execute("COMMIT")
+        except sqlite3.Error:
+            conn.execute("ROLLBACK")
+            raise

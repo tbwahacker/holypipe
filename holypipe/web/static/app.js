@@ -91,6 +91,7 @@ document.querySelectorAll(".tab").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 document.getElementById("brandHome").addEventListener("click", () => switchTab("connections"));
+document.getElementById("currentUserBadge").addEventListener("click", () => openTokensModal());
 
 // ---------------------------------------------------------------------------
 // auth
@@ -683,7 +684,11 @@ function openConnectionDetail(conn) {
       el("span", { class: "icon" }, typeIcon(destination && destination.type)),
       destination ? destination.name : "?",
     ]),
-    conn.status_detail ? el("div", { class: "card-sub", style: "color:var(--err);margin-top:8px" }, conn.status_detail) : null,
+    // Native Element.append() stringifies a bare null/undefined argument
+    // into a literal "null"/"undefined" text node (unlike el()'s own
+    // children array, which filters them) — an empty text node instead of
+    // omitting the argument is the safe way to conditionally skip this one.
+    conn.status_detail ? el("div", { class: "card-sub", style: "color:var(--err);margin-top:8px" }, conn.status_detail) : "",
     el("div", { class: "card-body", style: "margin-top:16px" }, [
       el("div", { class: "card-stat" }, [el("b", {}, String(selectedStreams.length)), "streams"]),
       el("div", { class: "card-stat" }, [el("b", {}, fmtTime(conn.last_run_at)), "last sync"]),
@@ -1614,6 +1619,97 @@ function openUserModal(existing) {
 
 document.getElementById("newRoleBtn").addEventListener("click", () => openRoleModal(null));
 document.getElementById("newUserBtn").addEventListener("click", () => openUserModal(null));
+
+// ---------------------------------------------------------------------------
+// API tokens — personal access tokens for AI agents (MCP) / scripts
+// ---------------------------------------------------------------------------
+function tokenRow(t) {
+  const meta = [
+    `created ${fmtTime(t.created_at)}`,
+    t.last_used_at ? `last used ${fmtTime(t.last_used_at)}` : "never used",
+    t.expires_at ? `expires ${fmtTime(t.expires_at)}` : "no expiry",
+  ].join(" · ");
+  const revokeBtn = el("button", { type: "button", class: "btn small danger" }, "Revoke");
+  revokeBtn.addEventListener("click", async () => {
+    if (!confirm(`Revoke token "${t.name}" (${t.token_prefix}...)? Any agent using it stops working immediately.`)) return;
+    try {
+      await api(`/tokens/${t.id}`, { method: "DELETE" });
+      toast("Token revoked", "ok");
+      openTokensModal();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  });
+  return el("div", { class: "card" }, [
+    el("div", { class: "card-top" }, [
+      el("div", {}, [
+        el("div", { class: "card-title" }, [el("strong", {}, t.name), el("code", {}, ` ${t.token_prefix}...`)]),
+        el("div", { class: "card-sub" }, meta),
+      ]),
+      el("div", { class: "card-actions" }, [revokeBtn]),
+    ]),
+  ]);
+}
+
+async function openTokensModal() {
+  const wrap = el("div", {});
+  const listWrap = el("div", { class: "cards" }, "Loading…");
+  const nameInput = el("input", { type: "text", placeholder: "e.g. Claude Code" });
+  const expiryInput = el("input", { type: "number", min: "1", placeholder: "never" });
+  const createBtn = el("button", { type: "button", class: "btn primary" }, "Create token");
+  const newTokenBox = el("div", { class: "field hint", hidden: true });
+
+  createBtn.addEventListener("click", async () => {
+    const name = nameInput.value.trim();
+    if (!name) return toast("Give the token a name", "err");
+    const expires_in_days = expiryInput.value ? Number(expiryInput.value) : null;
+    try {
+      const row = await api("/tokens", { method: "POST", body: JSON.stringify({ name, expires_in_days }) });
+      nameInput.value = "";
+      expiryInput.value = "";
+      newTokenBox.hidden = false;
+      newTokenBox.innerHTML = "";
+      newTokenBox.append(
+        el("div", {}, "Copy this now — it won't be shown again:"),
+        el("code", { style: "user-select:all; word-break:break-all; display:block; margin-top:4px" }, row.token),
+      );
+      await refreshTokenList();
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  });
+
+  async function refreshTokenList() {
+    try {
+      const tokens = await api("/tokens");
+      listWrap.innerHTML = "";
+      if (!tokens.length) {
+        listWrap.append(el("div", { class: "field hint" }, "No API tokens yet."));
+      } else {
+        listWrap.append(...tokens.map(tokenRow));
+      }
+    } catch (e) {
+      toast(e.message, "err");
+    }
+  }
+
+  wrap.append(
+    el("h3", {}, "API Tokens"),
+    el("div", { class: "field hint" },
+      "Personal access tokens let AI agents (via MCP) or scripts act as you, " +
+      "with your own permissions. See the MCP Integration guide in the docs."),
+    el("div", { class: "form-grid" }, [
+      el("div", { class: "field" }, [el("label", {}, "Name"), nameInput]),
+      el("div", { class: "field" }, [el("label", {}, "Expires in (days, optional)"), expiryInput]),
+    ]),
+    el("div", { class: "modal-actions" }, [createBtn]),
+    newTokenBox,
+    el("h3", {}, "Existing tokens"),
+    listWrap,
+  );
+  openModal(wrap);
+  await refreshTokenList();
+}
 
 // ---------------------------------------------------------------------------
 // boot

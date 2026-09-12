@@ -25,6 +25,7 @@ from .base import (
     Column,
     ConnectorError,
     StreamSchema,
+    bounded_name,
     normalize_record,
     normalize_value,
 )
@@ -412,4 +413,23 @@ class MysqlDestination(MysqlMixin, BaseDestination):
         conn = self._get_conn()
         with conn.cursor() as cur:
             cur.execute(f"TRUNCATE TABLE {self._quoted(table, namespace)}")
+        conn.commit()
+
+    def swap_in(self, table: str, namespace: str | None, shadow_table: str) -> None:
+        db = self._db(namespace)
+        old = bounded_name(table, "__hpold")
+        conn = self._get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = %s AND table_name = %s", (db, table))
+            exists = cur.fetchone() is not None
+            if exists:
+                # A single multi-table RENAME is atomic in MySQL — the old
+                # table is out and the new one is in within one statement.
+                cur.execute(f"RENAME TABLE `{db}`.`{table}` TO `{db}`.`{old}`, "
+                           f"`{db}`.`{shadow_table}` TO `{db}`.`{table}`")
+                cur.execute(f"DROP TABLE `{db}`.`{old}`")
+            else:
+                cur.execute(f"RENAME TABLE `{db}`.`{shadow_table}` TO `{db}`.`{table}`")
         conn.commit()

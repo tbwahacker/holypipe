@@ -69,6 +69,26 @@ class UserOut(BaseModel):
     role_names: list[str]
 
 
+class ApiTokenIn(BaseModel):
+    name: str
+    expires_in_days: int | None = None  # None = never expires
+
+
+class ApiTokenOut(BaseModel):
+    id: str
+    name: str
+    token_prefix: str
+    created_at: dt.datetime
+    last_used_at: dt.datetime | None
+    expires_at: dt.datetime | None
+
+    model_config = {"from_attributes": True}
+
+
+class ApiTokenCreated(ApiTokenOut):
+    token: str  # only ever present in the create response
+
+
 class ConnectorIn(BaseModel):
     name: str
     type: str

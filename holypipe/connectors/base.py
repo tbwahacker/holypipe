@@ -25,6 +25,19 @@ CANONICAL_TYPES = (STRING, INTEGER, NUMBER, BOOLEAN, TIMESTAMP, DATE, TIME, JSON
 CURSOR_TYPES = (INTEGER, NUMBER, TIMESTAMP, DATE, TIME, STRING)
 
 
+def bounded_name(base: str, suffix: str, limit: int = 63) -> str:
+    """`base` truncated so `base + suffix` fits within `limit` chars — keeps
+    generated identifiers under every supported engine's limit (Postgres 63,
+    MySQL 64; SQLite has none, but staying uniform avoids two code paths)."""
+    return base[: max(limit - len(suffix), 1)] + suffix
+
+
+def shadow_table_name(table: str) -> str:
+    """Name of the shadow table a full_refresh sync loads into before being
+    atomically swapped in via `BaseDestination.swap_in` — see its docstring."""
+    return bounded_name(table, "__hpswap")
+
+
 @dataclass
 class Column:
     name: str
@@ -174,4 +187,16 @@ class BaseDestination(BaseConnector):
         raise NotImplementedError
 
     def truncate(self, table: str, namespace: str | None) -> None:
+        raise NotImplementedError
+
+    def swap_in(self, table: str, namespace: str | None, shadow_table: str) -> None:
+        """Atomically replace `table` with the already fully-loaded
+        `shadow_table` (built via `prepare()`/`write()` under the name from
+        `shadow_table_name()`) via a rename swap, so a full_refresh sync
+        never leaves readers looking at a truncated-but-not-yet-reloaded
+        table. `shadow_table` no longer exists once this returns.
+
+        Trade-off: any index/grant added directly on the destination table
+        outside of HolyPipe is lost on swap, since the object itself is
+        replaced rather than its rows updated in place."""
         raise NotImplementedError

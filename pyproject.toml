@@ -36,6 +36,7 @@ dependencies = [
     "python-dotenv==1.0.1",
     "croniter==2.0.5",
     "bcrypt==4.2.1",
+    "mcp==1.9.4",
 ]
 
 [project.urls]

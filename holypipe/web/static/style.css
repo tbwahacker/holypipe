@@ -40,7 +40,11 @@ body {
   z-index: 10;
 }
 
-.current-user { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.current-user {
+  color: var(--muted); font-size: 12.5px; white-space: nowrap;
+  background: none; border: none; padding: 0; cursor: pointer; font-family: inherit;
+}
+.current-user:hover { color: var(--accent); text-decoration: underline; }
 
 .section-subhead {
   font-size: 12px;
