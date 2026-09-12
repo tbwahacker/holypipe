@@ -498,6 +498,122 @@ function connectionCard(conn) {
   return card;
 }
 
+// ---------------------------------------------------------------------------
+// a group of connections fanned out to the same destination (one per
+// source — see fanOutConnections) rendered as a single list entry
+// ---------------------------------------------------------------------------
+function groupConnections(connections) {
+  const byGroup = new Map();
+  const groups = [];
+  for (const conn of connections) {
+    if (!conn.group_id) {
+      groups.push({ groupId: null, members: [conn] });
+      continue;
+    }
+    if (!byGroup.has(conn.group_id)) {
+      const entry = { groupId: conn.group_id, members: [] };
+      byGroup.set(conn.group_id, entry);
+      groups.push(entry);
+    }
+    byGroup.get(conn.group_id).members.push(conn);
+  }
+  return groups;
+}
+
+function connectionEntry(group) {
+  return group.members.length > 1 ? connectionGroupCard(group.members) : connectionCard(group.members[0]);
+}
+
+function aggregateStatus(members) {
+  if (members.some((m) => m.status === "error")) return "error";
+  if (members.some((m) => m.status === "streaming")) return "streaming";
+  if (members.some((m) => m.status === "running")) return "running";
+  return "idle";
+}
+
+function connectionGroupCard(members) {
+  const baseName = baseConnectionName(members[0].name);
+  const destination = state.destinations.find((d) => d.id === members[0].destination_id);
+  const sourceNames = members.map((m) => (state.sources.find((s) => s.id === m.source_id) || {}).name || "?");
+  const anyEnabled = members.some((m) => m.enabled);
+  const totalStreams = members.reduce((sum, m) => sum + m.streams.filter((s) => s.selected !== false).length, 0);
+  const lastRun = members.map((m) => m.last_run_at).filter(Boolean).sort().pop() || null;
+
+  const card = el("div", { class: "card clickable" });
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".card-actions")) return;
+    openConnectionGroupDetail(members);
+  });
+
+  const actions = [];
+  if (hasPermission("connections.manage")) {
+    actions.push(el("button", {
+      type: "button", class: "btn small", onclick: () => openAddSourceModal(members[0]),
+    }, "+ Add source"));
+  }
+
+  card.append(
+    el("div", { class: "card-top" }, [
+      el("div", {}, [
+        el("div", { class: "card-title" }, [
+          baseName,
+          statusBadge(aggregateStatus(members)),
+          el("span", { class: `badge ${anyEnabled ? "" : "paused"}` }, anyEnabled ? "active" : "paused"),
+          el("span", { class: "badge" }, `${members.length} sources`),
+        ]),
+        el("div", { class: "card-sub" },
+          `${sourceNames.join(", ")} → ${typeIcon(destination && destination.type)} ${destination ? destination.name : "?"}`),
+      ]),
+      el("div", { class: "card-actions" }, actions),
+    ]),
+    el("div", { class: "card-body" }, [
+      el("div", { class: "card-stat" }, [el("b", {}, String(totalStreams)), "streams"]),
+      el("div", { class: "card-stat" }, [el("b", {}, fmtTime(lastRun)), "last sync"]),
+      el("div", { class: "card-stat" }, [el("b", {}, String(members.length)), "connections"]),
+    ])
+  );
+  return card;
+}
+
+function openConnectionGroupDetail(members) {
+  const baseName = baseConnectionName(members[0].name);
+  const destination = state.destinations.find((d) => d.id === members[0].destination_id);
+  const wrap = el("div", {});
+
+  const rows = members.map((conn) => {
+    const source = state.sources.find((s) => s.id === conn.source_id);
+    const row = el("div", { class: "stream-row clickable" }, [
+      el("span", { class: "name" }, [
+        `${typeIcon(source && source.type)} ${source ? source.name : "?"}`,
+        el("span", { class: "arrow" }, "→"),
+        `${typeIcon(destination && destination.type)} ${destination ? destination.name : "?"}`,
+      ]),
+      statusBadge(conn.status),
+      el("span", { class: `badge ${conn.enabled ? "" : "paused"}` }, conn.enabled ? "active" : "paused"),
+    ]);
+    row.addEventListener("click", () => { closeModal(); openConnectionDetail(conn); });
+    return row;
+  });
+
+  const actions = [
+    el("button", { type: "button", class: "btn", onclick: closeModal }, "Close"),
+  ];
+  if (hasPermission("connections.manage")) {
+    actions.unshift(el("button", {
+      type: "button", class: "btn primary",
+      onclick: () => { closeModal(); openAddSourceModal(members[0]); },
+    }, "+ Add source"));
+  }
+
+  wrap.append(
+    el("h3", {}, baseName),
+    el("div", { class: "hint" }, `${members.length} sources feeding ${destination ? destination.name : "?"} — click one to manage it.`),
+    el("div", { class: "stream-list" }, rows),
+    el("div", { class: "modal-actions" }, actions)
+  );
+  openModal(wrap);
+}
+
 async function runConnection(conn) {
   try {
     await api(`/connections/${conn.id}/run`, { method: "POST" });
@@ -1126,9 +1242,14 @@ function createSourcePicker(sources) {
  * source — required when `baseName` is already taken by another connection
  * (e.g. adding a source to an existing one), not just when there are
  * multiple sources to disambiguate between. */
-async function fanOutConnections(baseName, streamsBySource, sources, settings, forceSuffix = false) {
+async function fanOutConnections(baseName, streamsBySource, sources, settings, forceSuffix = false, groupId = null) {
   const sourceIds = Object.keys(streamsBySource);
   const multi = forceSuffix || sourceIds.length > 1;
+  // A shared group_id is what lets the UI show fanned-out connections as one
+  // multi-source pipeline instead of unrelated duplicates — generate one
+  // whenever this call is creating more than one connection, unless the
+  // caller already has one (adding to an existing group).
+  const effectiveGroupId = groupId || (multi ? crypto.randomUUID() : null);
   const created = [];
   const failed = [];
   for (const sourceId of sourceIds) {
@@ -1138,7 +1259,8 @@ async function fanOutConnections(baseName, streamsBySource, sources, settings, f
       const conn = await api("/connections", {
         method: "POST",
         body: JSON.stringify({
-          name: connName, source_id: sourceId, streams: streamsBySource[sourceId], ...settings,
+          name: connName, source_id: sourceId, streams: streamsBySource[sourceId],
+          group_id: effectiveGroupId, ...settings,
         }),
       });
       if (settings.mode === "cdc") await api(`/connections/${conn.id}/start`, { method: "POST" });
@@ -1284,12 +1406,21 @@ function openAddSourceModal(baseConn) {
     const streamsBySource = picker.getStreamsBySource();
     if (!Object.keys(streamsBySource).length) return toast("Discover and select at least one table", "err");
 
+    // The base connection needs a group_id too, or the new sibling(s) would
+    // form a group of their own without it — assign one now if this is its
+    // first time being fanned out.
+    let groupId = baseConn.group_id;
+    if (!groupId) {
+      groupId = crypto.randomUUID();
+      await api(`/connections/${baseConn.id}`, { method: "PATCH", body: JSON.stringify({ group_id: groupId }) });
+    }
+
     const { created, failed } = await fanOutConnections(name, streamsBySource, otherSources, {
       destination_id: baseConn.destination_id, mode: baseConn.mode,
       schedule_type: baseConn.schedule_type, interval_seconds: baseConn.interval_seconds,
       cron_expression: baseConn.cron_expression,
       destination_namespace: baseConn.destination_namespace, table_prefix: baseConn.table_prefix,
-    }, /* forceSuffix */ true);
+    }, /* forceSuffix */ true, groupId);
 
     if (created.length) toast(`Created ${created.length} connection(s)`, "ok");
     if (failed.length) toast(failed.join(" | "), "err");
@@ -1329,12 +1460,12 @@ function renderList(containerId, items, renderer, emptyText) {
 function renderAll() {
   renderList("sourcesList", state.sources, (s) => connectorCard(s, "source"), "No sources yet.");
   renderList("destinationsList", state.destinations, (d) => connectorCard(d, "destination"), "No destinations yet.");
-  renderList("connectionsList", state.connections, connectionCard, "No connections yet. Create a source and destination, then add a connection.");
+  renderList("connectionsList", groupConnections(state.connections), connectionEntry, "No connections yet. Create a source and destination, then add a connection.");
 }
 
 async function refreshConnections() {
   state.connections = await api("/connections");
-  renderList("connectionsList", state.connections, connectionCard, "No connections yet. Create a source and destination, then add a connection.");
+  renderList("connectionsList", groupConnections(state.connections), connectionEntry, "No connections yet. Create a source and destination, then add a connection.");
 }
 
 async function refreshAll() {

@@ -298,7 +298,7 @@ def create_connection(body: sch.ConnectionIn, db: Session = Depends(get_session)
         mode=body.mode, schedule_type=body.schedule_type, interval_seconds=body.interval_seconds,
         cron_expression=body.cron_expression, enabled=body.enabled,
         destination_namespace=body.destination_namespace, table_prefix=body.table_prefix,
-        streams=body.streams, state={}, next_run_at=next_run,
+        streams=body.streams, group_id=body.group_id, state={}, next_run_at=next_run,
     )
     db.add(conn)
     db.commit()

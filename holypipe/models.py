@@ -72,6 +72,13 @@ class Connection(Base):
     destination_namespace: Mapped[str | None] = mapped_column(String(200), nullable=True)
     table_prefix: Mapped[str] = mapped_column(String(100), default="")
 
+    # Connections created together for the same destination (one per source,
+    # since CDC/replication state is inherently per-database — see
+    # fanOutConnections in app.js) share a group_id so the UI can show them
+    # as one logical multi-source pipeline instead of unrelated duplicates.
+    # Null for a connection that has never been fanned out.
+    group_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+
     # [{name, namespace, table, selected, sync_mode, cursor_field, primary_key, destination_table, columns}]
     streams: Mapped[list] = mapped_column(JSON, default=list)
     state: Mapped[dict] = mapped_column(JSON, default=dict)
