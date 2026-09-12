@@ -25,6 +25,9 @@ live web dashboard.
 ## Screenshots
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/screenshots/architecture.png" alt="HolyPipe architecture diagram" width="800">
+  <br><em>Architecture — one container, no message broker or separate worker fleet</em>
+  <br><br>
   <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/screenshots/dashboard-connections.png" alt="HolyPipe connections dashboard" width="800">
   <br><em>Connections dashboard</em>
   <br><br>
@@ -204,6 +207,10 @@ Open http://localhost:8090, then:
   data flows through the pipelines it manages.
 
 ## Architecture
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tbwahacker/holypipe/main/screenshots/architecture.png" alt="HolyPipe architecture diagram" width="700">
+</p>
 
 ```
 holypipe/

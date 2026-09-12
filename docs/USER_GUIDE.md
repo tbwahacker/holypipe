@@ -1,3 +1,11 @@
+---
+title: HolyPipe User Guide — Using the Dashboard
+description: >-
+  How to use the HolyPipe web dashboard: sources, destinations, connections,
+  update methods (full refresh, incremental, xmin, CDC), scheduling, and
+  live logs.
+---
+
 # HolyPipe — User Guide
 
 This guide covers using the HolyPipe web dashboard to move data between

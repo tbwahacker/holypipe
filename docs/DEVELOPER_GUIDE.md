@@ -1,3 +1,11 @@
+---
+title: HolyPipe Developer Guide — Codebase & Extending Connectors
+description: >-
+  How HolyPipe's codebase fits together — connectors, the sync engine, CDC
+  workers, the scheduler, and the canonical-type system — and how to add a
+  new connector or extend an existing one.
+---
+
 # HolyPipe — Developer Guide
 
 How the codebase fits together, and how to extend it. For running the

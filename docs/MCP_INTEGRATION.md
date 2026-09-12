@@ -1,3 +1,11 @@
+---
+title: HolyPipe MCP Integration Guide — Claude, Copilot, Codex
+description: >-
+  Connect Claude, GitHub Copilot, Codex, or any other MCP-capable AI agent
+  to HolyPipe's built-in MCP server: create an API token, configure the
+  agent, and see every available tool.
+---
+
 # HolyPipe — MCP Integration Guide
 
 HolyPipe ships a built-in [MCP](https://modelcontextprotocol.io) server, so

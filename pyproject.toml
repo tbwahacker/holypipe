@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "holypipe"
-version = "1.0.2"
+version = "1.1.0"
 description = "A scoped ELT / CDC data-replication tool for PostgreSQL, MySQL, and SQLite"
 readme = "README.md"
 license = { file = "LICENSE" }
