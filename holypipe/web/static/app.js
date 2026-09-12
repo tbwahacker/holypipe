@@ -327,7 +327,13 @@ const URI_PLACEHOLDERS = {
 // Mirrors connectors/dsn.py's parse_dsn() in reverse, so the URI field always
 // reflects the current form fields — including right after opening "Edit"
 // on a connector that was originally set up via form fields, which never
-// had a URI to begin with.
+// had a URI to begin with. The password is starred out, since this URI is
+// displayed in a plain, always-visible text field (unlike the password
+// field itself, which is masked by default with its own reveal toggle) —
+// buildPayload() below submits the real form config instead of this
+// display string whenever the stars haven't been intentionally overwritten.
+const URI_PASSWORD_MASK = "********";
+
 function configToUri(type, config) {
   const enc = (v) => encodeURIComponent(v ?? "");
   if (type === "sqlite") {
@@ -341,7 +347,7 @@ function configToUri(type, config) {
   const database = config.database || "";
   const username = config.username || "";
   const password = config.password || "";
-  const auth = username ? `${enc(username)}${password ? ":" + enc(password) : ""}@` : "";
+  const auth = username ? `${enc(username)}${password ? ":" + URI_PASSWORD_MASK : ""}@` : "";
   const params = [];
   if (type === "postgres") {
     if (config.sslmode) params.push(`sslmode=${enc(config.sslmode)}`);
@@ -391,11 +397,21 @@ function openConnectorModal(kind, existing) {
   formModeBtn.addEventListener("click", () => setMode("form"));
   uriModeBtn.addEventListener("click", () => setMode("uri"));
 
+  // True once the user has actually typed/pasted into the URI field
+  // themselves — as opposed to it just showing the auto-synced, starred-out
+  // preview below. Only a manually-entered URI (with its own real password)
+  // is safe to submit as-is; the auto-synced one never is, since its
+  // password is always the literal mask string.
+  let uriManuallyEdited = false;
+  uriInput.addEventListener("input", () => { uriManuallyEdited = true; });
+
   // Keeps the URI field showing the equivalent of whatever's in the form
   // fields, so it's always accurate — including immediately after opening
   // "Edit" on a connector that was set up via form fields and never had a
-  // URI of its own to begin with.
+  // URI of its own to begin with. Stops once the user takes manual control
+  // of the URI field, so their own edit is never silently overwritten.
   function syncUriFromForm() {
+    if (uriManuallyEdited) return;
     const type = typeSelect.value;
     const spec = types.find((t) => t.type === type);
     if (!spec) return;
@@ -423,7 +439,13 @@ function openConnectorModal(kind, existing) {
 
   function buildPayload(probeName) {
     const type = typeSelect.value;
-    if (inputMode === "uri") {
+    // Only submit the URI field itself when the user actually typed/pasted
+    // it — otherwise it's just the auto-synced preview with a starred-out
+    // password, and submitting it verbatim would overwrite the real
+    // password with the literal mask string. In every other case (form
+    // mode, or the URI tab is just showing that unedited preview) the real
+    // form fields are the source of truth.
+    if (inputMode === "uri" && uriManuallyEdited) {
       const uri = uriInput.value.trim();
       if (!uri) throw new Error("Connection URI is required");
       return { name: probeName, type, uri };
