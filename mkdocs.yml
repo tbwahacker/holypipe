@@ -1,3 +1,4 @@
+# Redeployed after removing the conflicting Jekyll Pages workflow.
 site_name: HolyPipe Documentation
 site_description: >-
   HolyPipe is a scoped ELT / CDC data-replication tool for PostgreSQL, MySQL,
