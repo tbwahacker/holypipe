@@ -235,19 +235,6 @@ function fieldNode(field, value) {
   if (value !== undefined && value !== null) input.value = value;
   else if (field.default !== undefined && field.kind === "number") input.value = field.default;
 
-  if (field.kind === "password") {
-    const toggleBtn = el("button", {
-      type: "button", class: "password-toggle", title: "Show/hide password",
-    }, "👁");
-    toggleBtn.addEventListener("click", () => {
-      const showing = input.type === "text";
-      input.type = showing ? "password" : "text";
-      toggleBtn.textContent = showing ? "👁" : "🙈";
-    });
-    wrap.append(label, el("div", { class: "password-field" }, [input, toggleBtn]));
-    return wrap;
-  }
-
   wrap.append(label, input);
   return wrap;
 }
